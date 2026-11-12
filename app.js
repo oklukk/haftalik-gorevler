@@ -247,10 +247,10 @@ function listFor(date) {
   const dayKey = dateKey(date);
   dayLists.set(dayKey, list);
   const add = element('button', 'add');
-  add.append(icon('plus', document), element('span', '', 'Madde ekle'));
+  add.append(icon('plus', document), element('span', '', 'Görev ekle'));
   add.type = 'button';
   add.disabled = !canWrite;
-  add.setAttribute('aria-label', `${fullDate(date)} için madde ekle`);
+  add.setAttribute('aria-label', `${fullDate(date)} için görev ekle`);
   add.addEventListener('click', () => {
     // Keep focus synchronous with the touch gesture so iOS opens its keyboard.
     if (!finishEditor()) return;
@@ -260,8 +260,8 @@ function listFor(date) {
     mark.append(icon('circle', document));
     const input = element('input');
     input.type = 'text';
-    input.placeholder = 'Yeni madde';
-    input.setAttribute('aria-label', `${fullDate(date)} için yeni madde`);
+    input.placeholder = 'Yeni görev';
+    input.setAttribute('aria-label', `${fullDate(date)} için yeni görev`);
     input.setAttribute('enterkeyhint', 'done');
     input.autocomplete = 'off';
     form.append(mark, input);

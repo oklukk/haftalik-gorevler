@@ -73,9 +73,9 @@ h2 { margin: 0; font-size: var(--font-day); line-height: 1.4; font-weight: 600; 
 .task-more .icon { width: 18px; height: 18px; }
 .task:active, .task-more:active, .day-title:active, .task-menu-action:active, .sheet-action:active { background: #dce8d766; }
 .task-date { display: block; margin-top: 1px; font-size: var(--font-small); line-height: 18px; color: var(--muted); }
-.add { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 44px; margin-top: 3px; padding: 8px 10px; border: 1px solid #dce6d6; border-radius: var(--radius); background: #e8f0e2; color: #58724f; text-align: left; font-size: var(--font-control); line-height: 22px; }
+.add { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 44px; margin-top: 3px; padding: 8px 10px; border: 1px solid #e3eadf; border-radius: var(--radius); background: #f5f8f2; color: #607454; text-align: left; font-size: var(--font-control); line-height: 22px; }
 .add .icon { width: 18px; height: 18px; flex-basis: 18px; }
-.add:active { background: #dce9d5; }
+.add:active { background: #edf3e7; }
 .editor { display: flex; align-items: center; gap: 9px; min-height: 46px; margin-top: 3px; padding: 1px 9px; border: 1px solid #aabd9f; border-radius: var(--radius); background: #fafcf7; }
 .editor input, .task-edit input { width: 100%; min-width: 0; min-height: 44px; padding: 8px 0; border: 0; border-radius: 0; background: transparent; color: var(--ink); font-size: 16px; line-height: 24px; scroll-margin-top: calc(var(--header-height, 64px) + 12px); scroll-margin-bottom: 70px; }
 .editor input::placeholder { color: #83927c; }
@@ -99,9 +99,10 @@ h3 { margin: 0; font-size: var(--font-control); font-weight: 600; }
 .settings-sheet::backdrop, .task-sheet::backdrop { background: #20352655; }
 .sheet-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 4px; }
 .sheet-heading h2 { font-size: var(--font-day); }
-.settings-section-title { display: flex; align-items: center; gap: 7px; margin: 15px 0 5px; padding: 0 9px; color: #5c7950; font-size: var(--font-control); }
+.settings-section-title { display: flex; align-items: center; gap: 7px; margin: 15px 0 5px; padding: 0 9px; color: #5c7950; font-size: var(--font-task); }
 .settings-section-title .icon { width: 17px; height: 17px; flex-basis: 17px; }
 .sheet-action, .task-menu-action { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 48px; padding: 10px 9px; border: 0; border-bottom: 1px solid var(--line); background: transparent; text-align: left; font-size: var(--font-task); }
+.sheet-action { font-size: var(--font-control); }
 .sheet-action > .icon:first-child, .task-menu-action > .icon { color: #778c6c; width: 19px; height: 19px; flex-basis: 19px; }
 .setting-copy { flex: 1; min-width: 0; }
 .sheet-action > .icon:last-child { width: 16px; height: 16px; color: #92a18a; }
