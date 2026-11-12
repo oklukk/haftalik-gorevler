@@ -68,7 +68,7 @@ def check(browser, url):
     page.locator('.day-title').nth(4).click()
     expect(page.locator('.day-title').nth(4)).to_have_attribute('aria-expanded', 'false')
     expect(page.locator('.carry-tasks [data-task-id="old"]')).to_have_count(1)
-    for width in [320, 375, 390, 412]:
+    for width in [320, 360, 375, 390, 412]:
         page.set_viewport_size({'width': width, 'height': 844})
         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), width
     page.screenshot(path='/tmp/haftalik-weekly-mobile.png', full_page=True)
@@ -132,7 +132,7 @@ def check(browser, url):
 
 def upgrade_check(browser, url, target, commit=LEGACY_COMMIT, previous="v1"):
     # Install the published main service worker first, then serve the new shell.
-    for name in ['index.html', 'app.js', 'dates.js', 'styles.css', 'sw.js', 'storage.js']:
+    for name in ['index.html', 'app.js', 'dates.js', 'styles.css', 'sw.js', 'storage.js'] + (['settings.js','backup.js','updates.js','version.js'] if previous == 'v3' else []):
         content = subprocess.check_output(['git', 'show', f'{commit}:{name}'], cwd=ROOT)
         (target / name).write_bytes(content)
     context = browser.new_context()
@@ -148,12 +148,12 @@ def upgrade_check(browser, url, target, commit=LEGACY_COMMIT, previous="v1"):
     page.wait_for_function('navigator.serviceWorker.controller !== null')
     before = page.evaluate('caches.keys()')
     assert any(name.endswith(':'+previous) for name in before), before
-    for name in ['index.html', 'app.js', 'dates.js', 'styles.css', 'sw.js', 'storage.js']:
+    for name in ['index.html', 'app.js', 'dates.js', 'styles.css', 'sw.js', 'storage.js'] + (['settings.js','backup.js','updates.js','version.js'] if previous == 'v3' else []):
         shutil.copyfile(ROOT / name, target / name)
     page.evaluate('navigator.serviceWorker.getRegistration().then(r => r.update())')
     page.wait_for_function('navigator.serviceWorker.getRegistration().then(r => !!r.waiting)')
     # Wait for actual activation with all old clients closed before reopening.
-    waiting_worker = next(worker for worker in context.service_workers if worker.evaluate('VERSION') == 'v3')
+    waiting_worker = next(worker for worker in context.service_workers if worker.evaluate('VERSION') == 'v4')
     page.close()
     waiting_worker.evaluate('() => new Promise(resolve => { const poll = () => { if (self.registration.active?.state === "activated" && !self.registration.waiting) resolve(); else setTimeout(poll, 20); }; poll(); })')
     page = context.new_page()
@@ -162,18 +162,18 @@ def upgrade_check(browser, url, target, commit=LEGACY_COMMIT, previous="v1"):
     page.set_default_timeout(10000)
     page.goto(url)
     page.wait_for_function('navigator.serviceWorker.getRegistration().then(r => !r.waiting && r.active?.state === "activated" && r.active === navigator.serviceWorker.controller)')
-    page.wait_for_function('caches.keys().then(keys => keys.some(k => k.endsWith(":v3")) && !keys.some(k => k.endsWith(":v1")) && !keys.some(k => k.endsWith(":v2")))')
+    page.wait_for_function('caches.keys().then(keys => keys.some(k => k.endsWith(":v4")) && !keys.some(k => k.endsWith(":v1")) && !keys.some(k => k.endsWith(":v2")) && !keys.some(k => k.endsWith(":v3")))')
     page.reload()
     expect(page.locator('.week-nav')).to_have_count(1)
     assert page.evaluate(f'JSON.parse(localStorage.getItem({json.dumps(KEY)}))') == SEED
-    page.wait_for_function('caches.keys().then(keys => keys.some(k => k.endsWith(":v3")) && !keys.some(k => k.endsWith(":v1")) && !keys.some(k => k.endsWith(":v2")))')
+    page.wait_for_function('caches.keys().then(keys => keys.some(k => k.endsWith(":v4")) && !keys.some(k => k.endsWith(":v1")) && !keys.some(k => k.endsWith(":v2")) && !keys.some(k => k.endsWith(":v3")))')
     context.set_offline(True)
     page.reload()
     expect(page.locator('.week-nav')).to_have_count(1)
     assert page.evaluate(f'JSON.parse(localStorage.getItem({json.dumps(KEY)}))') == SEED
     assert not upgrade_errors,upgrade_errors
     context.close()
-    print(f'PASS: {previous} → v3 PWA upgrade, old cache removal, unchanged existing records, offline updated shell')
+    print(f'PASS: {previous} → v4 PWA upgrade, old cache removal, unchanged existing records, offline updated shell')
 
 
 def settings_check(browser, url):
@@ -194,7 +194,7 @@ def settings_check(browser, url):
     page.locator('.today .task').first.click()
     expect(page.locator('.today .day-count')).to_have_text('1/1 tamamlandı')
     page.locator('.today .task').first.click()
-    for width in [320,375,390,412]:
+    for width in [320,360,375,390,412]:
         page.set_viewport_size({'width':width,'height':844})
         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
         sizes=page.evaluate('({day:parseFloat(getComputedStyle(document.querySelector("h2")).fontSize),task:parseFloat(getComputedStyle(document.querySelector(".task")).fontSize),header:document.querySelector(".page-header").offsetHeight})')
@@ -213,7 +213,7 @@ def settings_check(browser, url):
     assert abs(page.evaluate('scrollY')-y) <= 1
     expect(page.locator('.editor input')).to_have_value('Panel açılırken korunan taslak')
     page.locator('.settings-button').click()
-    expect(page.locator('.app-version')).to_have_text('Sürüm 1.2.0')
+    expect(page.locator('.app-version')).to_have_text('Sürüm 1.3.0')
     # Downloads contain all stored records, and export/import make no network requests.
     requests=[]
     page.on('request',lambda request: requests.append(request.url))
@@ -279,8 +279,8 @@ def live_update_check(browser,url,target):
     page.evaluate(f'localStorage.setItem({json.dumps(KEY)}, {json.dumps(json.dumps(SEED))})')
     page.reload();page.evaluate('navigator.serviceWorker.ready')
     page.wait_for_function('navigator.serviceWorker.controller !== null')
-    (target/'sw.js').write_text((ROOT/'sw.js').read_text().replace("const VERSION = 'v3'","const VERSION = 'v4'"))
-    (target/'version.js').write_text((ROOT/'version.js').read_text().replace('1.2.0','1.2.1'))
+    (target/'sw.js').write_text((ROOT/'sw.js').read_text().replace("const VERSION = 'v4'","const VERSION = 'v5'"))
+    (target/'version.js').write_text((ROOT/'version.js').read_text().replace('1.3.0','1.3.1'))
     page.locator('.settings-button').click();page.locator('.check-updates').click()
     expect(page.locator('.activate-update')).to_be_visible()
     expect(page.locator('.settings-status')).to_have_text('Güncelleme Hazır')
@@ -298,10 +298,10 @@ def live_update_check(browser,url,target):
     other=context.new_page();other.goto(url)
     page.locator('.activate-update').click()
     expect(page.locator('.settings-status')).to_contain_text('Diğer uygulama')
-    expect(page.locator('.app-version')).to_have_text('Sürüm 1.2.0')
+    expect(page.locator('.app-version')).to_have_text('Sürüm 1.3.0')
     other.close()
     page.locator('.activate-update').click()
-    page.wait_for_function('document.querySelector(".settings-sheet .app-version")?.textContent === "Sürüm 1.2.1"')
+    page.wait_for_function('document.querySelector(".settings-sheet .app-version")?.textContent === "Sürüm 1.3.1"')
     records=page.evaluate(f'JSON.parse(localStorage.getItem({json.dumps(KEY)}))')
     assert len(records)==6 and records[:5]==SEED and records[-1]['text']=='Güncellemeden önce koru'
     context.set_offline(True)
@@ -313,6 +313,96 @@ def live_update_check(browser,url,target):
     context.close()
     shutil.copyfile(ROOT/'sw.js',target/'sw.js');shutil.copyfile(ROOT/'version.js',target/'version.js')
     print('PASS: real waiting worker, later, draft quota protection, multiple windows, consent activation/reload, preserved data, offline check')
+
+
+def task_actions_check(browser,url):
+    context=browser.new_context(viewport={'width':390,'height':844},is_mobile=True,has_touch=True,locale='tr-TR',timezone_id='Europe/Istanbul',accept_downloads=True)
+    page=context.new_page();page.set_default_timeout(10000)
+    errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
+    page.clock.install(time=datetime(2026,11,12,12,tzinfo=ZoneInfo('Europe/Istanbul')))
+    demo=[SEED[0],SEED[1]]+[
+        dict(id=f't{i}',date='2026-11-12',text=text,completed=i<2)
+        for i,text in enumerate(['Haftalık planı gözden geçir','Evrakları hazırla','Toplantı notlarını düzenle','Kitap okumaya zaman ayır','Uzun Türkçe görev: '+ 'ğ'*90])
+    ]
+    page.add_init_script(f'if(!localStorage.getItem({json.dumps(KEY)}))localStorage.setItem({json.dumps(KEY)},{json.dumps(json.dumps(demo))});')
+    page.goto(url);page.evaluate('navigator.serviceWorker.ready')
+    page.wait_for_function('navigator.serviceWorker.controller !== null')
+    def stored():return page.evaluate(f'JSON.parse(localStorage.getItem({json.dumps(KEY)}))')
+    def row(id,area='.today'):return page.locator(f'{area} [data-task-id="{id}"]').locator('..')
+    def menu(id,area='.today'):
+        control=row(id,area).locator('.task');before=control.get_attribute('aria-pressed')
+        row(id,area).locator('.task-more').click()
+        expect(control).to_have_attribute('aria-pressed',before)
+        expect(page.locator('.task-sheet')).to_be_visible()
+    expect(page.locator('.day-progress')).to_have_attribute('aria-valuenow','40')
+    for width in [320,360,375,390,412,900]:
+        page.set_viewport_size({'width':width,'height':844})
+        page.evaluate('scrollTo(0,0)')
+        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'),width
+        expect(page.locator('.today-label')).to_be_visible()
+        for selector in ['.task-more','.task','.add','.week-arrow','.settings-button']:
+            assert page.locator(selector+':visible').first.evaluate('(n)=>n.getBoundingClientRect().height >= 44'),selector
+        assert page.locator('.task-mark:visible').first.evaluate('(n)=>n.getBoundingClientRect().width')==22
+        if width in [320,375,390]:page.screenshot(path=f'/tmp/haftalik-soft-v2-{width}.png',full_page=True)
+    page.set_viewport_size({'width':320,'height':844})
+    page.locator('html').evaluate('(n)=>n.style.fontSize="150%"')
+    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+    page.locator('html').evaluate('(n)=>n.style.fontSize=""')
+    page.set_viewport_size({'width':390,'height':844})
+    # Menu opens without completing; escape and backdrop restore safely.
+    menu('t2');page.screenshot(path='/tmp/haftalik-soft-v2-task-menu.png');page.keyboard.press('Escape');expect(page.locator('.task-sheet')).not_to_be_visible()
+    menu('t2');page.mouse.click(5,5);expect(page.locator('.task-sheet')).not_to_be_visible()
+    menu('t2');page.locator('.task-edit-action').click()
+    expect(page.locator('.task-edit input')).to_be_focused()
+    page.screenshot(path='/tmp/haftalik-soft-v2-task-edit.png')
+    assert page.locator('.task-edit input').evaluate('(n)=>parseFloat(getComputedStyle(n).fontSize)')>=16
+    page.locator('.task-edit input').fill('   ');page.locator('.edit-save').click()
+    expect(page.locator('.edit-error')).to_contain_text('boş olamaz')
+    page.locator('.task-edit input').fill('İptal taslağı');page.locator('.edit-cancel').click()
+    assert next(t for t in stored() if t['id']=='t2')['text']=='Toplantı notlarını düzenle'
+    menu('t2');page.locator('.task-edit-action').click()
+    page.locator('.task-edit input').fill('Düzenlenen görev');page.locator('.edit-save').click()
+    assert next(t for t in stored() if t['id']=='t2')==dict(id='t2',date='2026-11-12',text='Düzenlenen görev',completed=False)
+    # Preserve an edited completed task's identity/status during date moves.
+    menu('t0');page.locator('.task-date-action').click();page.locator('.task-date-input').fill('2026-11-20');page.locator('.task-date-save').click()
+    assert next(t for t in stored() if t['id']=='t0')['completed'] is True
+    expect(page.locator('.day-progress')).to_have_attribute('aria-valuenow','25')
+    menu('old','.carry-tasks');page.locator('.task-date-action').click()
+    page.locator('.task-date-input').fill('');page.locator('.task-date-save').click()
+    expect(page.locator('.task-menu-status')).to_contain_text('Geçerli')
+    page.locator('.task-date-input').fill('2026-11-12');page.locator('.task-date-save').click()
+    expect(page.locator('.carry-tasks [data-task-id="old"]')).to_have_count(0)
+    expect(page.locator('.today [data-task-id="old"]')).to_have_count(1)
+    expect(page.locator('.day-progress')).to_have_attribute('aria-valuenow','20')
+    menu('old');page.locator('.task-date-action').click();page.locator('.task-date-input').fill('2026-10-30');page.locator('.task-date-save').click()
+    expect(page.locator('.carry-tasks [data-task-id="old"]')).to_have_count(1)
+    # All new actions work with the application offline.
+    context.set_offline(True)
+    menu('week','.carry-tasks');page.locator('.task-edit-action').click()
+    page.locator('.task-edit input').fill('Çevrimdışı düzenlendi');page.locator('.edit-save').click()
+    menu('week','.carry-tasks');page.locator('.task-delete-action').click();page.locator('.task-delete-cancel').click()
+    assert any(t['id']=='week' for t in stored())
+    menu('week','.carry-tasks');page.locator('.task-delete-action').click();page.locator('.task-delete-confirm').click()
+    assert not any(t['id']=='week' for t in stored())
+    # A quota failure retains both the original record and visible editing draft.
+    menu('t2');page.locator('.task-edit-action').click();page.locator('.task-edit input').fill('Kaydedilemeyen taslak')
+    page.evaluate('() => {window.savedSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(){throw new DOMException("quota","QuotaExceededError")};}')
+    page.locator('.edit-save').click();expect(page.locator('.task-edit input')).to_have_value('Kaydedilemeyen taslak')
+    assert next(t for t in stored() if t['id']=='t2')['text']=='Düzenlenen görev'
+    page.evaluate('() => {Storage.prototype.setItem=window.savedSetItem;}');page.locator('.edit-cancel').click()
+    page.locator('.settings-button').click()
+    page.screenshot(path='/tmp/haftalik-soft-v2-settings.png')
+    with page.expect_download() as event:page.locator('.export-backup').click()
+    backup=json.loads(Path(event.value.path()).read_text())
+    assert backup['tasks']==stored()
+    assert not any(t['id']=='week' for t in backup['tasks'])
+    assert next(t for t in backup['tasks'] if t['id']=='t0')['date']=='2026-11-20'
+    page.locator('.sheet-close').click();page.reload()
+    expect(page.locator('.today [data-task-id="t2"] .task-text')).to_have_text('Düzenlenen görev')
+    assert len(stored())==len(demo)-1
+    assert not errors,errors
+    context.close()
+    print('PASS: SVG controls/visual screenshots, six widths, touch targets, progress, edit/cancel/blank/quota, local date moves, confirmed deletion, offline and backup compatibility')
 
 
 with TemporaryDirectory(prefix='haftalik-browser-') as directory:
@@ -327,8 +417,10 @@ with TemporaryDirectory(prefix='haftalik-browser-') as directory:
             url = f'http://127.0.0.1:{server.server_port}/haftalik-gorevler/'
             check(browser, url)
             settings_check(browser, url)
+            task_actions_check(browser,url)
             upgrade_check(browser, url, target)
             upgrade_check(browser, url, target, '22be840e17311adb1b943a8f0e75b0b72133bac1', 'v2')
+            upgrade_check(browser, url, target, '564fe3fe0b7273d6b9d68bf9c761c326b61bd5e5', 'v3')
             live_update_check(browser,url,target)
             browser.close()
     finally:
