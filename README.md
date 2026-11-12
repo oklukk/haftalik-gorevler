@@ -24,7 +24,7 @@ Bu teslim GitHub hesabınıza otomatik yükleme veya yayımlama yapmaz.
 
 1. GitHub Pages HTTPS adresini **Safari** ile açın; ilk açılışta internet açık olsun.
 2. Bir güne `+ Madde ekle` ile yazın, klavyenin Tamam/Enter tuşuyla kaydedin. Boş bir girdi de deneyin.
-3. Gün adına dokunun; tam sayfa detayda bir görev daha ekleyin. Göreve dokunup tamamlayın, tekrar dokunup geri alın. Uygulamadaki geri butonunu ve Safari’nin geri hareketini deneyin.
+3. Gün adlarına dokunup bağımsız açılıp kapandıklarını kontrol edin. Bir görev ekleyin, tamamlayın ve geri alın. Hafta oklarını ve “Bugüne Dön” kontrolünü deneyin. Geçmiş bir tarihe eklediğiniz görevin bugünün devredenlerinde aynı tarih ile göründüğünü ve tamamlamanın geri alınabildiğini kontrol edin.
 4. Safari’de **Paylaş → Ana Ekrana Ekle → Ekle** yolunu izleyin. Seçeneği göremiyorsanız paylaşım listesini aşağı kaydırın.
 5. Ana ekran simgesinden uygulamayı internet açıkken bir kez açın; birkaç saniye bekleyin. Görev ekleyin, uygulamayı kapatıp yeniden açın ve kayıtları kontrol edin.
 6. Uçak modunu açın ve Wi-Fi’yi kapatın. Uygulamayı ana ekran simgesinden yeniden açıp görev ekleme/tamamlama ve kapatıp açma işlemlerini tekrarlayın.
@@ -34,10 +34,12 @@ Android’de aynı HTTPS adresini Chrome ile açın. Menüde **Ana ekrana ekle**
 ## Veri ve kullanım
 
 - Hafta cihazın yerel tarihine göre pazartesi–pazar hesaplanır. Uygulama açıkken veya yeniden öne getirildiğinde gün/hafta değişimi kontrol edilir.
-- Gün adına dokunmak uygulama içinde `#gun/YYYY-AA-GG` adresini açar. Bu yaklaşım GitHub Pages için yönlendirme yapılandırması gerektirmez; tarayıcı geri/ileri geçmişini destekler.
+- Uygulama tek ekrandır. Gün başlıkları birbirinden bağımsız açılıp kapanır. Mevcut haftaya ilk girişte geçmiş günler kapalı, bugün ve sonraki günler açıktır. Diğer haftalar açık günlerle başlar; elle yapılan seçimler oturum boyunca korunur. Eski `#gun/YYYY-AA-GG` bağlantıları ilgili haftayı ve günü açar.
 - `+ Madde ekle` doğrudan boş bir satır açar ve odağı eşzamanlı olarak girişe taşır. Enter/Tamam kaydeder. Satırdan ayrılmak da dolu taslağı kaydeder; boş girdi kaydedilmez. Fiziksel klavyede Escape taslağı iptal eder.
 - Görevler `{ id, date, text, completed }` alanlarıyla `localStorage` içinde tutulur. Depolama anahtarı uygulamanın alt dizinini içerir.
-- Haftalar değişince kayıtlar silinmez; ana sayfa yalnızca geçerli haftayı gösterir. Geçmiş hafta gezinmesi bu sürüme dahil değildir.
+- Üstteki oklar pazartesi–pazar haftaları arasında gezinir; geçmiş ve gelecek tarihlere görev eklenebilir. Haftalar değişince kayıtlar silinmez. Sabit başlığın altında seçilen tarih aralığı gösterilir.
+- Açılışta bugün görünür. “Bugüne Dön”, başka bir hafta seçiliyken veya bugün ekranda görünmüyorken gösterilir; bugünün bölümü kapalıysa açar. Görev işlemleri ve günleri açıp kapatma bugüne otomatik kaydırmaz.
+- Bugünün altında “Devreden Görevler”, tüm geçmiş tarihlerdeki tamamlanmamış görevleri eski tarihten yeniye gösterir. Görevler kopyalanmaz veya bugüne taşınmaz; aynı kayıt güncellenir. Bu görünümden yeni tamamlananlar, geri alınabilmeleri için görünümden ayrılana veya uygulama yeniden açılana kadar kalır. Sayaç yalnızca tamamlanmamış görevleri sayar. “Tamamlananları göster” geçmişte tamamlanan görevleri asıl tarihleriyle açar ve geri almayı sağlar; geçici olarak gösterilen görevler burada tekrarlanmaz.
 - Ayrı cihazlar ve tarayıcı profilleri bağımsızdır. Aynı cihaz/tarayıcı/uygulama adresini kullananlar aynı yerel veriyi görür. Senkronizasyon yoktur.
 - Tarayıcı/site verilerini silmek görevleri de siler. Safari ve ana ekrana eklenen uygulamada depolama davranışı iOS sürümüne göre farklılaşabilir; düzenli kullanım ve testi ana ekran uygulamasında yapın. Gizli gezinmeyi kalıcı saklama için kullanmayın.
 - Service worker yalnızca uygulama dosyalarını önbelleğe alır; görevleri sunucuya göndermez. Sonraki bir sürümde dosyaları değiştirirken `sw.js` içindeki `VERSION` değerini artırın. Yeni önbellek hazır olduktan sonra tüm uygulama sekme/pencerelerini kapatıp açınca güncelleme devreye girer.
@@ -46,24 +48,11 @@ Android’de aynı HTTPS adresini Chrome ile açın. Menüde **Ana ekrana ekle**
 
 Node.js 20 veya üzeri varsa `npm test` çalıştırın. `npm install` gerekmez; testler yalnızca Node’un yerleşik araçlarını kullanır. Node, uygulamayı çalıştırmak için zorunlu değildir.
 
-Teslim hazırlanırken **8 otomatik test geçti**:
+`npm test` tarih/hafta hesaplarını, tek ekranda bağımsız günleri, hafta gezinmesini, bugüne dönüş ve görünürlük mantığını, devreden görevleri, tamamlama/geri almayı, eski kayıtları, depolama hatalarını, güvenli metin gösterimini ve service worker davranışını kontrol eder. DOM/Cache test dublörleri gerçek tarayıcının yerini tutmaz.
 
-| Kontrol | Sonuç / yöntem |
-| --- | --- |
-| Yedi gün, pazartesi–pazar sırası, Türkçe tarihler | Geçti; ay, yıl, artık gün ve farklı saat dilimleri dahil |
-| Ana sayfadan görev ekleme, boş girdi | Geçti; gerçek uygulama işleyicileri, DOM test dublörü |
-| Gün detayına geçiş, uygulama/tarayıcı geri işlemi | Geçti; DOM ve History test dublörü |
-| Detaydan görev ekleme | Geçti; DOM test dublörü |
-| Tamamlama ve geri alma | Geçti; görev listede kalıyor |
-| Yeniden açılışta kalıcılık | Geçti; aynı depodan yeni uygulama örneği; gerçek tarayıcı yenilemesi ayrıca denenmeli |
-| Çevrimdışı uygulama kabuğu | Geçti; service worker olayları ve Cache API test dublörü, ağ kapalı senaryo |
-| Alt dizin, manifest, ikonlar | Geçti; göreli dosyalar ve kapsam kontrol edildi |
-| Depolama hatası, metnin HTML olarak çalıştırılmaması | Geçti |
-| Gerçek mobil yerleşim, dokunma, iOS klavyesi ve çevrimdışı açılış | **Doğrulanamadı**; ortamda tarayıcı kontrol aracı sunulmadı |
+Bulut test ortamında Python Playwright ve `/usr/bin/chromium` mevcutsa `python3 tests/browser_smoke.py` ile tarayıcı kontrolleri çalıştırılabilir. Test kendi geçici HTTP sunucusunu ve izole tarayıcı depolamasını kullanır; kullanıcı verilerine dokunmaz. Mobil genişlikleri (320, 375, 390 ve 412 px), görev akışlarını, kaydırmayı, eski bağlantıları, GitHub Pages alt dizinini, çevrimdışı kaydı ve GitHub’daki ilk sürümün sabitlenmiş commit’inden yeni PWA önbelleğine geçiş sırasında mevcut verilerin korunmasını kontrol eder.
 
-DOM/Cache testleri gerçek tarayıcı testlerinin yerini tutmaz. Fiziksel iPhone veya Android üzerinde test yapılmadı. Mobil CSS’de en az 44 px dokunma alanları, 16 px giriş yazısı (iOS yakınlaştırmasını önlemek için), uzun görevlerde satır kaydırma ve güvenli ekran boşlukları tanımlıdır; taşma ve klavye davranışı cihazda doğrulanmalıdır.
-
-Gerçek cihazda yukarıdaki adımlara ek olarak 320, 375, 390 ve 412 px genişliklerde uzun bir Türkçe görev ve boşluksuz uzun metin deneyin; yatay kaydırma olmamasını ve klavye açıkken satıra erişilebildiğini kontrol edin.
+Gerçek iPhone/Safari ve Android cihazında test yapılmadı. Chromium mobil ekran kontrolleri fiziksel iOS klavyesi, güvenli ekran boşlukları ve ana ekrana yüklenen PWA davranışını doğrulamaz. Gerçek cihazda uzun Türkçe görevleri, klavye açıkken giriş satırına erişimi, görevlerin uygulama kapatılıp açıldığında korunmasını ve çevrimdışı kullanımı ayrıca kontrol edin.
 
 ## Dosyalar
 
