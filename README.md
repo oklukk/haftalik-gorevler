@@ -44,6 +44,18 @@ Android’de aynı HTTPS adresini Chrome ile açın. Menüde **Ana ekrana ekle**
 - Tarayıcı/site verilerini silmek görevleri de siler. Safari ve ana ekrana eklenen uygulamada depolama davranışı iOS sürümüne göre farklılaşabilir; düzenli kullanım ve testi ana ekran uygulamasında yapın. Gizli gezinmeyi kalıcı saklama için kullanmayın.
 - Service worker yalnızca uygulama dosyalarını önbelleğe alır; görevleri sunucuya göndermez. Sonraki bir sürümde dosyaları değiştirirken `sw.js` içindeki `VERSION` değerini artırın. Yeni önbellek hazır olduktan sonra tüm uygulama sekme/pencerelerini kapatıp açınca güncelleme devreye girer.
 
+## Ayarlar, yedekleme ve güncelleme
+
+Üstteki dişli simgesi, aynı ekran üzerinde Ayarlar panelini açar. Açık görev taslağı ve sayfanın kaydırma konumu korunur. Yazı boyutları merkezi CSS değişkenleriyle yönetilir; günlük sayaçlar yalnızca o tarihin kendi görevlerini sayar.
+
+- **Verileri Yedekle:** Tüm geçmiş, mevcut ve gelecek görevler kimlik, tarih, metin ve tamamlanma durumlarıyla cihaz üzerinde JSON dosyasına dönüştürülür. Destekleniyorsa dosya paylaşımı, diğer tarayıcılarda indirme kullanılır. Dosyanın gerçekten kaydedildiği tarayıcı tarafından garanti edilemez; seçilen dosya konumunu kontrol edin. Açık, henüz kaydedilmemiş taslak yedeğe dahil değildir. Hiçbir görev dış sunucuya gönderilmez.
+- **Yedeği Geri Yükle:** Dosya seçmek kayıtları değiştirmez. Biçim sürümü, alanlar, gerçek takvim tarihleri ve kimliklerin benzersizliği doğrulanır. En fazla 5 MiB, 20.000 görev, kimlik başına 200 ve metin başına 20.000 karakter kabul edilir. Önizleme toplam/mevcut/yeni/aynı/çakışan görev sayılarını gösterir.
+- **Birleştir (varsayılan):** Yeni kimlikler eklenir, aynı kayıtlar çoğaltılmaz; çakışmalarda cihazdaki kayıt korunur. Açık onaydan sonra tek `localStorage.setItem` işlemiyle kaydedilir. Önizlemeden sonra cihazdaki kayıtlar değişirse yeniden onay istenir. Kaydetme başarısızsa eski görevler korunur.
+- **Yerine yükle (gelişmiş):** Cihazdaki tüm görevleri değiştirir. Önce ayrıca yedek alınması önerilir; bu işlem ilk uyarı/onaydan sonra ikinci bir açık onay gerektirir. İptal veya geçersiz dosya hiçbir kaydı değiştirmez.
+- **Güncellemeleri Kontrol Et:** Gerçek service worker kontrolünü çalıştırır. Çevrimdışı/hatalı kontroller yeni sürüm olmadığı şeklinde bildirilmez. Hazır sürüm için “Daha Sonra” veya “Şimdi Güncelle” seçilebilir. Taslak kaydedilemiyorsa güncelleme başlatılmaz. Birden fazla uygulama penceresi açıksa bunları kapatmanız istenir; açık oturumlar izinsiz yenilenmez. Tarayıcı etkinleştiremezse uygulamayı tamamen kapatıp açın.
+
+Uygulama sürümü `version.js` içinde, yedek biçim sürümü `backup.js` içinde, service worker önbellek sürümü `sw.js` içinde yönetilir. Bunların hiçbiri mevcut `haftalik-gorevler:v1:${basePath}` veri anahtarını değiştirmez. Güncel uygulama dosyaları HTTP önbelleği yeniden doğrulanarak alınır. Eski uygulama sürümünden bu sürüme ilk geçiş, bütün eski pencereler kapatılıp açıldığında tamamlanır; sonraki sürümler Ayarlar üzerinden kontrol edilebilir.
+
 ## Testler ve doğrulama sınırları
 
 Node.js 20 veya üzeri varsa `npm test` çalıştırın. `npm install` gerekmez; testler yalnızca Node’un yerleşik araçlarını kullanır. Node, uygulamayı çalıştırmak için zorunlu değildir.
@@ -56,4 +68,4 @@ Gerçek iPhone/Safari ve Android cihazında test yapılmadı. Chromium mobil ekr
 
 ## Dosyalar
 
-`index.html` kabuk ve PWA meta bilgileri; `styles.css` mobil tasarım; `app.js` görünüm ve etkileşimler; `dates.js` yerel tarih işlemleri; `storage.js` veri kaydı; `sw.js` çevrimdışı önbellek; `manifest.webmanifest` yükleme bilgileri; `icons/` ana ekran simgeleri; `tests/` bağımlılıksız mantık testleri.
+`index.html` kabuk ve PWA meta bilgileri; `styles.css` mobil tasarım; `app.js` görünüm ve etkileşimler; `dates.js` yerel tarih işlemleri; `storage.js` veri kaydı; `sw.js` çevrimdışı önbellek; `manifest.webmanifest` yükleme bilgileri; `icons/` ana ekran simgeleri; `backup.js` yerel yedek doğrulama ve birleştirme; `settings.js` ayarlar ve dosya işlemleri; `updates.js` service worker güncelleme akışı; `version.js` uygulama sürümü; `tests/` mantık ve tarayıcı testleri.

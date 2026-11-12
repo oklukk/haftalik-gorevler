@@ -1,3 +1,4 @@
+import { setupSettings } from './settings.js';
 import { dateKey, parseDate, weekDays, shortDate, fullDate, weekLabel, shiftWeek, weekTitle } from './dates.js';
 import { storageKey, readTasks, saveTasks, makeTask } from './storage.js';
 
@@ -18,6 +19,8 @@ let carryOpen = true;
 let completedOpen = false;
 let header, todayButton, carryHost;
 let framePending = false;
+let settings;
+let holdEditor = false;
 
 function showNotice(message) {
   notice.textContent = message;
@@ -141,7 +144,7 @@ function listFor(date) {
         add.focus({ preventScroll: true });
       }
     });
-    input.addEventListener('blur', () => finish());
+    input.addEventListener('blur', () => { if (!holdEditor && !settings?.isOpen()) finish(); });
     input.focus();
   });
   container.append(list, add);
@@ -197,7 +200,9 @@ function renderCarryover() {
 function refreshTasks() {
   for (const [date, list] of dayLists) {
     list.replaceChildren();
-    tasks.filter(task => task.date === date).forEach(task => list.append(taskRow(task)));
+    const daily = tasks.filter(task => task.date === date);
+    daily.forEach(task => list.append(taskRow(task)));
+    daySections.get(date).querySelector('.day-count').textContent = daily.length ? `${daily.filter(task => task.completed).length}/${daily.length} tamamlandı` : 'Görev yok';
   }
   renderCarryover();
   scheduleVisibility();
@@ -219,6 +224,13 @@ function renderWeek() {
   carryHost = null;
   const days = weekDays(selectedWeek);
   document.title = `${weekTitle(selectedWeek, parseDate(visibleToday))} · Haftalık görevler`;
+  const identity = element('div', 'app-heading');
+  const gear = button('settings-button', '⚙︎', 'Ayarlar');
+  gear.setAttribute('aria-haspopup', 'dialog');
+  gear.addEventListener('pointerdown', () => settings.preserveDraft());
+  gear.addEventListener('click', () => settings.open(gear));
+  identity.append(element('p', 'app-title', 'Haftalık Görevler'), gear);
+  app.append(identity);
   header = element('header', 'page-header');
   const navigation = element('nav', 'week-nav');
   navigation.setAttribute('aria-label', 'Hafta seçimi');
@@ -247,6 +259,7 @@ function renderWeek() {
       toggle.setAttribute('aria-current', 'date');
       toggle.append(element('span', 'today-label', 'Bugün'));
     }
+    toggle.append(element('span', 'day-count', 'Görev yok'));
     toggle.setAttribute('aria-controls', `body-${dayKey}`);
     disclosure(toggle, open);
     toggle.addEventListener('click', () => {
@@ -358,9 +371,16 @@ if ('ResizeObserver' in window) new ResizeObserver(measureHeader).observe(app);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshDate(); });
 window.addEventListener('pageshow', refreshDate);
 setInterval(refreshDate, 30_000);
+settings = setupSettings({
+  getTasks: () => readTasks(localStorage, key),
+  commitTasks: next => {
+    if (!persist(next)) return false;
+    retainedCompleted.clear();
+    refreshTasks();
+    return true;
+  },
+  beforeOpen: () => { holdEditor = true; },
+  afterClose: () => { holdEditor = false; },
+  prepareUpdate: () => !editor || (!editor.input.composing && editor.finish())
+});
 if (!handleLegacyLink()) { renderWeek(); scrollDay(visibleToday); }
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {
-    showNotice('Çevrimdışı kullanım hazırlanamadı. İnternet bağlantınız varken sayfayı yeniden açın.');
-  });
-}

@@ -45,7 +45,7 @@ function boot(values=new Map(), hash='') {
   let now=new Date(2026,10,12,12);
   class Clock extends Date { constructor(...args) { super(...(args.length ? args : [now])); } }
   const frames=[];
-  const sandbox={...dates,...storage,document,location,history,localStorage,URL,crypto,Date:Clock,Intl,CSS:{escape:value=>value},navigator:{},requestAnimationFrame:fn=>frames.push(fn),setInterval(fn){listeners.tick=fn;},window:{scrollY:80,innerHeight:844,scrollTo(value){this.scrollY=value.top;document.scrollCalls=(document.scrollCalls??0)+1;},addEventListener(name,fn){listeners[name]=fn;}}};
+  const sandbox={setupSettings:()=>({isOpen:()=>false}),...dates,...storage,document,location,history,localStorage,URL,crypto,Date:Clock,Intl,CSS:{escape:value=>value},navigator:{},requestAnimationFrame:fn=>frames.push(fn),setInterval(fn){listeners.tick=fn;},window:{scrollY:80,innerHeight:844,scrollTo(value){this.scrollY=value.top;document.scrollCalls=(document.scrollCalls??0)+1;},addEventListener(name,fn){listeners[name]=fn;}}};
   const source=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8')
     .replace(/^import .*;\n/gm,'')
     .replace('import.meta.url',JSON.stringify('https://example.test/haftalik/app.js'));
@@ -257,4 +257,17 @@ test('IME, Escape ve odak kaybı mevcut yerinde yazma davranışını korur', ()
   input.fire('blur');
   assert.equal(saved(ui).length,1);
   assert.equal(saved(ui)[0].text,'Odak kaybında kaydet');
+});
+
+test('Gün sayaçları asıl tarihe göre anında güncellenir, devredenler bugüne eklenmez', () => {
+  const ui=boot(stored([task('old','2026-11-09'),task('today','2026-11-12')]));
+  assert.equal(ui.byClass('day-count')[0].textContent,'0/1 tamamlandı');
+  assert.equal(ui.byClass('day-count')[3].textContent,'0/1 tamamlandı');
+  clickTask(ui,'old');
+  assert.equal(ui.byClass('day-count')[0].textContent,'1/1 tamamlandı');
+  assert.equal(ui.byClass('day-count')[3].textContent,'0/1 tamamlandı');
+  assert.equal(ui.byClass('day-body')[0].hidden,true);
+  ui.add(ui.byClass('add')[3],'Yeni');
+  assert.equal(ui.byClass('day-count')[3].textContent,'0/2 tamamlandı');
+  assert.equal(ui.byClass('day-count')[4].textContent,'Görev yok');
 });

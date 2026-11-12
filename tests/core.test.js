@@ -75,8 +75,10 @@ test('Service worker: alt dizin, ilk önbellek, çevrimdışı açılış ve gü
   const entries = new Map();
   const deleted = [];
   const cache = {
-    async addAll(paths) {
-      for (const path of paths) {
+    async addAll(requests) {
+      for (const request of requests) {
+        assert.equal(request.cache, 'reload');
+        const path = './' + new URL(request.url).pathname.slice(new URL(scope).pathname.length);
         assert(fs.existsSync(new URL(path === './' ? '../index.html' : `../${path}`,import.meta.url)),path);
         entries.set(new URL(path,scope).href, { file:path });
       }
@@ -85,9 +87,9 @@ test('Service worker: alt dizin, ilk önbellek, çevrimdışı açılış ve gü
   };
   const prefix = `haftalik-gorevler:${scope}:`;
   vm.runInNewContext(fs.readFileSync(new URL('../sw.js',import.meta.url),'utf8'), {
-    URL,
+    URL, Request,
     self: { registration:{scope}, clients:{ async claim() {} }, addEventListener:(name,fn) => { handlers[name]=fn; } },
-    caches:{ async open(){ return cache; }, async keys(){ return [`${prefix}v1`,`${prefix}v2`,'another-app']; }, async delete(key){deleted.push(key);} },
+    caches:{ async open(){ return cache; }, async keys(){ return [`${prefix}v2`,`${prefix}v3`,'another-app']; }, async delete(key){deleted.push(key);} },
     fetch:async () => {throw new Error('Çevrimdışı');}
   });
   let pending;
@@ -96,7 +98,7 @@ test('Service worker: alt dizin, ilk önbellek, çevrimdışı açılış ve gü
   assert(entries.has(`${scope}app.js`));
   handlers.activate({waitUntil:promise=>{pending=promise;}});
   await pending;
-  assert.deepEqual(deleted,[`${prefix}v1`]);
+  assert.deepEqual(deleted,[`${prefix}v2`]);
   for (const [path,mode,expected] of [['','navigate','./'],['app.js','cors','./app.js'],['?acilis=1','navigate','./index.html']]) {
     handlers.fetch({ request:{url:scope+path,method:'GET',mode}, respondWith:promise=>{pending=promise;} });
     assert.equal((await pending).file, expected);
