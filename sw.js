@@ -1,10 +1,10 @@
 // Increase VERSION whenever an app-shell file changes.
-const VERSION = 'v3';
+const VERSION = 'v5';
 const PREFIX = `haftalik-gorevler:${self.registration.scope}:`;
 const CACHE = `${PREFIX}${VERSION}`;
 const SHELL = [
   './', './index.html', './styles.css', './app.js', './dates.js', './storage.js',
-  './backup.js', './settings.js', './updates.js', './version.js',
+  './icons.js', './backup.js', './settings.js', './updates.js', './version.js',
   './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png',
   './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png'
 ];

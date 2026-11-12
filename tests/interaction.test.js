@@ -6,15 +6,19 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import * as dates from '../dates.js';
 import * as storage from '../storage.js';
+import * as icons from '../icons.js';
 
 class Node {
-  constructor(tag, document) { this.tagName=tag; this.document=document; this.children=[]; this.handlers={}; this.attributes={}; this.hidden=false; this.value=''; this.ownText=''; }
+  constructor(tag, document) { this.tagName=tag; this.document=document; this.children=[]; this.handlers={}; this.attributes={}; this.hidden=false; this.value=''; this.ownText=''; this.style={}; }
   set textContent(value) { this.ownText=value; this.children=[]; }
   get textContent() { return this.ownText + this.children.map(child=>child.textContent).join(''); }
   append(...nodes) { for (const node of nodes) { node.parent=this; this.children.push(node); } }
   replaceChildren(...nodes) { this.children=[]; this.append(...nodes); }
   remove() { if(this.parent) this.parent.children=this.parent.children.filter(child=>child!==this); }
-  setAttribute(name,value) { this.attributes[name]=value; }
+  setAttribute(name,value) { this.attributes[name]=value; if(name==='class')this.className=value; }
+  get parentElement() { return this.parent; }
+  showModal() { this.open=true; }
+  close() { this.open=false; this.fire('close'); }
   querySelector(selector) {
     const match = node => selector.startsWith('.') ? node.className?.split(' ').includes(selector.slice(1)) : node.attributes['data-task-id'] === selector.match(/data-task-id="(.*)"/)[1];
     for (const child of this.children) { if (match(child)) return child; const found=child.querySelector(selector); if(found) return found; }
@@ -35,8 +39,11 @@ class Node {
 function boot(values=new Map(), hash='') {
   const document={hidden:false, documentElement:{style:{setProperty(){}}}, handlers:{}, addEventListener(name,fn){this.handlers[name]=fn;}};
   document.createElement=tag=>new Node(tag,document);
+  document.createElementNS=(_,tag)=>new Node(tag,document);
+  document.body=document.createElement('body');
   document.createTextNode=text=>{ const node=new Node('#text',document); node.textContent=text; return node; };
   const app=document.createElement('main'), notice=document.createElement('p');
+  document.body.append(app,notice);
   document.querySelector=selector=>selector==='#app'?app:notice;
   const listeners={};
   const location={pathname:'/haftalik/',search:'',hash};
@@ -45,12 +52,12 @@ function boot(values=new Map(), hash='') {
   let now=new Date(2026,10,12,12);
   class Clock extends Date { constructor(...args) { super(...(args.length ? args : [now])); } }
   const frames=[];
-  const sandbox={setupSettings:()=>({isOpen:()=>false}),...dates,...storage,document,location,history,localStorage,URL,crypto,Date:Clock,Intl,CSS:{escape:value=>value},navigator:{},requestAnimationFrame:fn=>frames.push(fn),setInterval(fn){listeners.tick=fn;},window:{scrollY:80,innerHeight:844,scrollTo(value){this.scrollY=value.top;document.scrollCalls=(document.scrollCalls??0)+1;},addEventListener(name,fn){listeners[name]=fn;}}};
+  const sandbox={setupSettings:()=>({isOpen:()=>false}),...dates,...storage,...icons,document,setTimeout(){},location,history,localStorage,URL,crypto,Date:Clock,Intl,CSS:{escape:value=>value},navigator:{},requestAnimationFrame:fn=>frames.push(fn),setInterval(fn){listeners.tick=fn;},window:{scrollY:80,innerHeight:844,scrollTo(value){this.scrollY=value.top;document.scrollCalls=(document.scrollCalls??0)+1;},addEventListener(name,fn){listeners[name]=fn;}}};
   const source=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8')
     .replace(/^import .*;\n/gm,'')
     .replace('import.meta.url',JSON.stringify('https://example.test/haftalik/app.js'));
   vm.runInNewContext(source,sandbox);
-  const all=(predicate,node=app)=>[...(predicate(node)?[node]:[]),...node.children.flatMap(child=>all(predicate,child))];
+  const all=(predicate,node=document.body)=>[...(predicate(node)?[node]:[]),...node.children.flatMap(child=>all(predicate,child))];
   const byClass=name=>all(node=>node.className?.split(' ').includes(name));
   const add=(button,text)=>{button.fire('click'); const input=byClass('editor')[0].children[1]; assert.equal(document.activeElement,input); input.value=text; input.parent.fire('submit');};
   const flush=()=>{while(frames.length)frames.shift()();};
@@ -270,4 +277,89 @@ test('Gün sayaçları asıl tarihe göre anında güncellenir, devredenler bug�
   ui.add(ui.byClass('add')[3],'Yeni');
   assert.equal(ui.byClass('day-count')[3].textContent,'0/2 tamamlandı');
   assert.equal(ui.byClass('day-count')[4].textContent,'Görev yok');
+});
+
+function openMenu(ui,id,within='tasks') {
+  const control=ui.byClass(within).map(list=>list.querySelector(`[data-task-id="${id}"]`)).find(Boolean);
+  assert(control);control.parentElement.children[1].fire('click');
+}
+function editTask(ui,id,text,within='tasks') {
+  openMenu(ui,id,within);ui.byClass('task-edit-action')[0].fire('click');
+  const input=ui.byClass('task-edit')[0].children[0];input.value=text;return input;
+}
+
+test('Üç nokta tamamlamaz; yerinde düzenleme kimlik, tarih ve tamamlanmayı korur',()=>{
+  const ui=boot(stored([task('today','2026-11-12',true),task('other','2026-11-13')]));
+  openMenu(ui,'today');assert.equal(saved(ui)[0].completed,true);
+  ui.byClass('task-edit-action')[0].fire('click');
+  const input=ui.byClass('task-edit')[0].children[0];input.value='  Güncellenmiş metin  ';
+  ui.byClass('edit-save')[0].fire('click');
+  assert.deepEqual(saved(ui)[0],{id:'today',date:'2026-11-12',text:'Güncellenmiş metin',completed:true});
+  assert.equal(saved(ui).length,2);
+  editTask(ui,'today','İptal edilecek');ui.byClass('edit-cancel')[0].fire('click');
+  assert.equal(saved(ui)[0].text,'Güncellenmiş metin');
+});
+
+test('Boş veya kaydedilemeyen düzenleme taslağı korunur; gezinme taslağı sessizce kaybetmez',()=>{
+  const values=stored([task('today','2026-11-12')]);const ui=boot(values);
+  editTask(ui,'today','   ');ui.byClass('edit-save')[0].fire('click');
+  assert.equal(ui.byClass('task-edit').length,1);assert.equal(saved(ui)[0].text,'today');
+  ui.byClass('previous-week')[0].fire('click');assert.equal(ui.byClass('today').length,1);
+  ui.byClass('task-edit')[0].children[0].value='Kaydedilemeyen metin';
+  values.set=()=>{throw Error('quota');};
+  ui.byClass('edit-save')[0].fire('click');
+  assert.equal(ui.byClass('task-edit')[0].children[0].value,'Kaydedilemeyen metin');
+  assert.equal(saved(ui)[0].text,'today');
+});
+
+test('Tarih taşıma tek kaydı günceller, devredenleri ve sayaçları yeniden hesaplar',()=>{
+  const ui=boot(stored([task('old','2026-11-09'),task('done','2026-10-01',true)]));
+  openMenu(ui,'old','carry-tasks');ui.byClass('task-date-action')[0].fire('click');
+  ui.byClass('task-date-input')[0].value='2026-11-12';ui.byClass('task-date-save')[0].fire('click');
+  assert.deepEqual(saved(ui)[0],task('old','2026-11-12'));
+  assert.equal(ui.byClass('day-count')[0].textContent,'Görev yok');
+  assert.equal(ui.byClass('day-count')[3].textContent,'0/1 tamamlandı');
+  assert.equal(rows(ui,'carry-tasks').length,0);
+  openMenu(ui,'old');ui.byClass('task-date-action')[0].fire('click');
+  ui.byClass('task-date-input')[0].value='2026-10-30';ui.byClass('task-date-save')[0].fire('click');
+  assert.equal(rows(ui,'carry-tasks').length,1);assert.equal(saved(ui).length,2);
+  openMenu(ui,'old','carry-tasks');ui.byClass('task-date-action')[0].fire('click');
+  ui.byClass('task-date-input')[0].value='2026-02-30';ui.byClass('task-date-save')[0].fire('click');
+  assert.equal(saved(ui)[0].date,'2026-10-30');
+  ui.byClass('task-date-cancel')[0].fire('click');
+  assert.equal(saved(ui)[1].completed,true);
+});
+
+test('Silme açık onay ister; iptal ve kaydetme hatası verileri korur',()=>{
+  const values=stored([task('old','2026-11-09'),task('keep','2026-11-12')]);const ui=boot(values);
+  openMenu(ui,'old','carry-tasks');ui.byClass('task-delete-action')[0].fire('click');
+  assert.equal(saved(ui).length,2);ui.byClass('task-delete-cancel')[0].fire('click');
+  assert.equal(saved(ui).length,2);
+  openMenu(ui,'old','carry-tasks');ui.byClass('task-delete-action')[0].fire('click');
+  const original=values.set.bind(values);values.set=()=>{throw Error('quota');};
+  ui.byClass('task-delete-confirm')[0].fire('click');assert.equal(saved(ui).length,2);
+  values.set=original;ui.byClass('task-delete-confirm')[0].fire('click');
+  assert.deepEqual(saved(ui),[task('keep','2026-11-12')]);assert.equal(rows(ui,'carry-tasks').length,0);
+});
+
+test('Bugün ilerlemesi yalnız kendi kayıtlarını sayar; boş veya kapalı gün çubuğu göstermez',()=>{
+  const ui=boot(stored([task('a','2026-11-12',true),task('b','2026-11-12',true),...['c','d','e'].map(id=>task(id,'2026-11-12')),task('old','2026-11-09')]));
+  assert.equal(ui.byClass('day-progress').length,1);
+  assert.equal(ui.byClass('progress-fill')[0].style.width,'40%');
+  ui.byClass('day-title')[3].fire('click');assert.equal(ui.byClass('day-body')[3].hidden,true);
+  assert.equal(boot().byClass('day-progress')[0].hidden,true);
+  assert.equal(ui.byClass('day-count')[3].textContent,'2/5 tamamlandı');
+  ui.byClass('day-title')[3].fire('click');
+  openMenu(ui,'a');ui.byClass('task-delete-action')[0].fire('click');ui.byClass('task-delete-confirm')[0].fire('click');
+  assert.equal(ui.byClass('progress-fill')[0].style.width,'25%');
+  assert.equal(ui.byClass('day-count')[3].textContent,'1/4 tamamlandı');
+});
+
+test('Devreden görev düzenlemesini kaydedip bölümü kapatmak açık/kapalı durumunu doğru uygular',()=>{
+  const ui=boot(stored([task('old','2026-11-09')]));
+  editTask(ui,'old','Yeni metin','carry-tasks');
+  ui.byClass('carry-title')[0].fire('click');
+  assert.equal(saved(ui)[0].text,'Yeni metin');
+  assert.equal(ui.byClass('carry-title')[0].attributes['aria-expanded'],'false');
+  assert.equal(ui.byClass('carry-tasks')[0].parent.hidden,true);
 });
