@@ -32,3 +32,18 @@ export function weekLabel(days) {
   const start = first.getMonth() === last.getMonth() ? first.getDate() : shortDate(first);
   return `${start} – ${shortDate(last)} ${last.getFullYear()}`;
 }
+
+// Calendar arithmetic remains correct across daylight-saving changes.
+export function shiftWeek(date, offset) {
+  const monday = weekDays(date)[0];
+  monday.setDate(monday.getDate() + offset * 7);
+  return monday;
+}
+
+export function weekTitle(selected, today = new Date()) {
+  const start = dateKey(weekDays(selected)[0]);
+  if (start === dateKey(weekDays(today)[0])) return 'Bu Hafta';
+  if (start === dateKey(shiftWeek(today, -1))) return 'Önceki Hafta';
+  if (start === dateKey(shiftWeek(today, 1))) return 'Gelecek Hafta';
+  return weekLabel(weekDays(selected));
+}

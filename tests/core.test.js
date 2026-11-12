@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { dateKey, parseDate, weekDays, fullDate, weekLabel } from '../dates.js';
+import { dateKey, parseDate, weekDays, fullDate, weekLabel, shiftWeek, weekTitle } from '../dates.js';
 import { readTasks, saveTasks, makeTask, storageKey } from '../storage.js';
 
 test('Pazartesi–pazar: hafta, ay, yıl ve artık gün geçişleri', () => {
@@ -87,7 +87,7 @@ test('Service worker: alt dizin, ilk önbellek, çevrimdışı açılış ve gü
   vm.runInNewContext(fs.readFileSync(new URL('../sw.js',import.meta.url),'utf8'), {
     URL,
     self: { registration:{scope}, clients:{ async claim() {} }, addEventListener:(name,fn) => { handlers[name]=fn; } },
-    caches:{ async open(){ return cache; }, async keys(){ return [`${prefix}v0`,`${prefix}v1`,'another-app']; }, async delete(key){deleted.push(key);} },
+    caches:{ async open(){ return cache; }, async keys(){ return [`${prefix}v1`,`${prefix}v2`,'another-app']; }, async delete(key){deleted.push(key);} },
     fetch:async () => {throw new Error('Çevrimdışı');}
   });
   let pending;
@@ -96,7 +96,7 @@ test('Service worker: alt dizin, ilk önbellek, çevrimdışı açılış ve gü
   assert(entries.has(`${scope}app.js`));
   handlers.activate({waitUntil:promise=>{pending=promise;}});
   await pending;
-  assert.deepEqual(deleted,[`${prefix}v0`]);
+  assert.deepEqual(deleted,[`${prefix}v1`]);
   for (const [path,mode,expected] of [['','navigate','./'],['app.js','cors','./app.js'],['?acilis=1','navigate','./index.html']]) {
     handlers.fetch({ request:{url:scope+path,method:'GET',mode}, respondWith:promise=>{pending=promise;} });
     assert.equal((await pending).file, expected);
@@ -104,4 +104,23 @@ test('Service worker: alt dizin, ilk önbellek, çevrimdışı açılış ve gü
   let intercepted=false;
   handlers.fetch({request:{url:'https://example.test/other/',method:'GET'},respondWith:()=>{intercepted=true;}});
   assert.equal(intercepted,false);
+});
+
+
+test('Hafta adımları ay/yıl ve yaz saati geçişlerinde yerel takvimi korur', () => {
+  assert.equal(dateKey(shiftWeek(parseDate('2026-12-28'),1)), '2027-01-04');
+  assert.equal(dateKey(shiftWeek(parseDate('2027-01-04'),-1)), '2026-12-28');
+  assert.equal(dateKey(shiftWeek(parseDate('2024-02-26'),1)), '2024-03-04');
+  const original=process.env.TZ;
+  try {
+    process.env.TZ='America/New_York';
+    assert.equal(dateKey(shiftWeek(parseDate('2026-03-02'),1)), '2026-03-09');
+    assert.equal(dateKey(shiftWeek(parseDate('2026-10-26'),1)), '2026-11-02');
+  } finally { if(original)process.env.TZ=original;else delete process.env.TZ; }
+  const today=parseDate('2026-11-12');
+  assert.equal(weekTitle(today,today),'Bu Hafta');
+  assert.equal(weekTitle(shiftWeek(today,-1),today),'Önceki Hafta');
+  assert.equal(weekTitle(shiftWeek(today,1),today),'Gelecek Hafta');
+  assert.equal(weekTitle(shiftWeek(today,2),today),'23 – 29 Kasım 2026');
+  assert.equal(storageKey('/haftalik/'),'haftalik-gorevler:v1:/haftalik/');
 });

@@ -15,6 +15,14 @@ class Node {
   replaceChildren(...nodes) { this.children=[]; this.append(...nodes); }
   remove() { if(this.parent) this.parent.children=this.parent.children.filter(child=>child!==this); }
   setAttribute(name,value) { this.attributes[name]=value; }
+  querySelector(selector) {
+    const match = node => selector.startsWith('.') ? node.className?.split(' ').includes(selector.slice(1)) : node.attributes['data-task-id'] === selector.match(/data-task-id="(.*)"/)[1];
+    for (const child of this.children) { if (match(child)) return child; const found=child.querySelector(selector); if(found) return found; }
+    return null;
+  }
+  getBoundingClientRect() { return this.rect ?? (this.tagName === 'header' ? {top:0,bottom:100,height:100} : {top:120,bottom:220,height:100}); }
+  scrollIntoView() { this.document.scrolledTo=this.id; }
+
   addEventListener(name,fn) { (this.handlers[name]??=[]).push(fn); }
   fire(name,extra={}) { for (const fn of this.handlers[name]??[]) fn({preventDefault(){},...extra}); }
   focus() {
@@ -24,17 +32,20 @@ class Node {
   }
 }
 
-function boot(values=new Map()) {
-  const document={hidden:false, addEventListener(){}};
+function boot(values=new Map(), hash='') {
+  const document={hidden:false, documentElement:{style:{setProperty(){}}}, handlers:{}, addEventListener(name,fn){this.handlers[name]=fn;}};
   document.createElement=tag=>new Node(tag,document);
   document.createTextNode=text=>{ const node=new Node('#text',document); node.textContent=text; return node; };
   const app=document.createElement('main'), notice=document.createElement('p');
   document.querySelector=selector=>selector==='#app'?app:notice;
   const listeners={};
-  const location={pathname:'/haftalik/',search:'',hash:''};
+  const location={pathname:'/haftalik/',search:'',hash};
   const history={state:null,pushState(state,_,url){this.state=state;location.hash=url;},replaceState(state){this.state=state;location.hash='';},back(){location.hash='';this.state=null;listeners.popstate();}};
   const localStorage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
-  const sandbox={...dates,...storage,document,location,history,localStorage,URL,crypto,Date,Intl,navigator:{},setInterval(){},window:{scrollY:80,scrollTo(){},addEventListener(name,fn){listeners[name]=fn;}}};
+  let now=new Date(2026,10,12,12);
+  class Clock extends Date { constructor(...args) { super(...(args.length ? args : [now])); } }
+  const frames=[];
+  const sandbox={...dates,...storage,document,location,history,localStorage,URL,crypto,Date:Clock,Intl,CSS:{escape:value=>value},navigator:{},requestAnimationFrame:fn=>frames.push(fn),setInterval(fn){listeners.tick=fn;},window:{scrollY:80,innerHeight:844,scrollTo(value){this.scrollY=value.top;document.scrollCalls=(document.scrollCalls??0)+1;},addEventListener(name,fn){listeners[name]=fn;}}};
   const source=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8')
     .replace(/^import .*;\n/gm,'')
     .replace('import.meta.url',JSON.stringify('https://example.test/haftalik/app.js'));
@@ -42,46 +53,157 @@ function boot(values=new Map()) {
   const all=(predicate,node=app)=>[...(predicate(node)?[node]:[]),...node.children.flatMap(child=>all(predicate,child))];
   const byClass=name=>all(node=>node.className?.split(' ').includes(name));
   const add=(button,text)=>{button.fire('click'); const input=byClass('editor')[0].children[1]; assert.equal(document.activeElement,input); input.value=text; input.parent.fire('submit');};
-  return {app,notice,location,history,values,byClass,add,document};
+  const flush=()=>{while(frames.length)frames.shift()();};
+  flush();
+  return {app,notice,location,history,values,byClass,add,document,listeners,flush,setNow(value){now=new Date(value);listeners.tick();flush();}};
 }
 
-test('Ana sayfa ve detay: ekleme, boş girdi, tamamlama, geri alma, geri navigasyon ve yeniden açılış', () => {
+const stored = tasks => new Map([[storage.storageKey('/haftalik/'),JSON.stringify(tasks)]]);
+const task = (id,date,completed=false) => ({id,date,text:id,completed});
+const saved = ui => JSON.parse(ui.values.get(storage.storageKey('/haftalik/')));
+const rows = (ui,name) => ui.byClass(name)[0]?.children ?? [];
+const clickTask = (ui,id,within='carry-tasks') => {
+  const list=ui.byClass(within)[0];
+  const control=list.querySelector(`[data-task-id="${id}"]`);
+  assert(control, `Görev bulunamadı: ${id}`);
+  control.fire('click');
+};
+
+test('Tek ekran: bağımsız günler, ilk durumlar, ekleme, boş girdi ve kalıcılık', () => {
   const ui=boot();
   assert.equal(ui.byClass('day').length,7);
-  assert.equal(ui.byClass('today').length,1);
-  ui.add(ui.byClass('add')[0],'   ');
+  assert.deepEqual(ui.byClass('day-body').map(node=>node.hidden),[true,true,true,false,false,false,false]);
+  assert.equal(ui.document.scrolledTo,'day-2026-11-12');
+  const scrolls=ui.document.scrollCalls;
+  ui.byClass('day-title')[0].fire('click');
+  ui.byClass('day-title')[1].fire('click');
+  assert.equal(ui.byClass('day-body')[0].hidden,false);
+  assert.equal(ui.byClass('day-body')[1].hidden,false);
+  assert.equal(ui.location.hash,'');
+  ui.add(ui.byClass('add')[3],'   ');
   assert.equal(ui.byClass('task').length,0);
-  ui.add(ui.byClass('add')[0],'  Çalışmayı gözden geçir  ');
+  ui.add(ui.byClass('add')[3],'  Çalışmayı gözden geçir  ');
   assert.equal(ui.byClass('task-text')[0].textContent,'Çalışmayı gözden geçir');
-  ui.byClass('day-title')[0].fire('click');
-  assert(ui.location.hash.startsWith('#gun/'));
-  assert.equal(ui.byClass('day').length,0);
-  assert.equal(ui.byClass('task').length,1);
-  ui.add(ui.byClass('add')[0],'İkinci görev');
-  const task=ui.byClass('task')[0];
-  task.fire('click');
-  assert.equal(task.attributes['aria-pressed'],'true');
-  assert.equal(ui.byClass('task').length,2);
+  ui.byClass('task')[0].fire('click');
+  assert.equal(ui.byClass('task')[0].attributes['aria-pressed'],'true');
+  assert.equal(boot(ui.values).byClass('task')[0].attributes['aria-pressed'],'true');
+  ui.byClass('task')[0].fire('click');
+  assert.equal(ui.byClass('task')[0].attributes['aria-pressed'],'false');
+  ui.flush();
+  assert.equal(ui.document.scrollCalls,scrolls);
+  assert.equal(ui.byClass('day-body')[0].hidden,false);
+  assert.equal(saved(ui).length,1);
+});
+
+test('Hafta gezinmesi, geçmiş/gelecek görevleri ve bugüne dönüş', () => {
+  const ui=boot();
+  ui.byClass('previous-week')[0].fire('click'); ui.flush();
+  assert.equal(ui.byClass('week-range')[0].textContent,'2 – 8 Kasım 2026');
+  assert(ui.byClass('day-body').every(node=>!node.hidden));
+  assert.equal(ui.byClass('carryover').length,0);
+  assert.equal(ui.byClass('today-button')[0].hidden,false);
+  ui.add(ui.byClass('add')[0],'Geçmiş görev');
+  assert.equal(saved(ui)[0].date,'2026-11-02');
+  ui.byClass('next-week')[0].fire('click'); ui.flush();
+  assert.equal(ui.document.scrolledTo,'day-2026-11-12');
+  ui.byClass('next-week')[0].fire('click'); ui.flush();
+  ui.add(ui.byClass('add')[6],'Gelecek görev');
+  assert.equal(saved(ui)[1].date,'2026-11-22');
+  assert(ui.byClass('day-body').every(node=>!node.hidden));
+  ui.byClass('today-button')[0].fire('click'); ui.flush();
+  assert.equal(ui.document.scrolledTo,'day-2026-11-12');
+  assert.equal(ui.byClass('today').length,1);
+  assert.equal(saved(ui).length,2);
+});
+
+test('Bugüne Dön görünürlüğü görünür alanı ve kapalı bugünü izler', () => {
+  const ui=boot();
+  assert.equal(ui.byClass('today-button')[0].hidden,true);
+  ui.byClass('today')[0].rect={top:-300,bottom:80};
+  ui.listeners.scroll();ui.flush();
+  assert.equal(ui.byClass('today-button')[0].hidden,false);
+  ui.byClass('today')[0].rect={top:120,bottom:220};
+  ui.listeners.scroll();ui.flush();
+  assert.equal(ui.byClass('today-button')[0].hidden,true);
+  ui.byClass('day-title')[3].fire('click');ui.flush();
+  assert.equal(ui.byClass('today-button')[0].hidden,false);
+  ui.byClass('today-button')[0].fire('click');ui.flush();
+  assert.equal(ui.byClass('day-body')[3].hidden,false);
+  assert.equal(ui.byClass('today-button')[0].hidden,true);
+});
+
+test('Devredenler: tarih sırası, tek kayıt, geçici tamamlama ve geri alma', () => {
+  const ui=boot(stored([task('same-week','2026-11-09'),task('old','2026-10-30'),task('done','2026-11-04',true),task('future','2026-11-20'),task('today','2026-11-12')]));
+  assert.deepEqual(rows(ui,'carry-tasks').map(node=>node.children[0].attributes['data-task-id']),['old','same-week']);
+  assert.match(ui.byClass('carry-title')[0].textContent,/Devreden Görevler \(2\)/);
+  clickTask(ui,'old');
+  assert.equal(saved(ui).find(t=>t.id==='old').completed,true);
+  assert.equal(rows(ui,'carry-tasks').length,2);
+  assert.match(ui.byClass('carry-title')[0].textContent,/Devreden Görevler \(1\)/);
+  ui.add(ui.byClass('add')[3],'Yeni görev');
+  ui.byClass('day-title')[1].fire('click');
+  assert.equal(rows(ui,'carry-tasks').length,2);
+  ui.byClass('carry-title')[0].fire('click');
+  assert.equal(ui.byClass('carry-title')[0].attributes['aria-expanded'],'false');
+  ui.byClass('carry-title')[0].fire('click');
+  ui.byClass('completed-toggle')[0].fire('click');
+  assert.deepEqual(rows(ui,'completed-tasks').map(node=>node.children[0].attributes['data-task-id']),['done']);
+  clickTask(ui,'old');
+  assert.equal(saved(ui).find(t=>t.id==='old').completed,false);
+  clickTask(ui,'done','completed-tasks');
+  assert.equal(rows(ui,'carry-tasks').length,3);
+  assert.equal(rows(ui,'completed-tasks').length,0);
+  clickTask(ui,'old');
   const reopened=boot(ui.values);
-  assert.equal(reopened.byClass('task')[0].attributes['aria-pressed'],'true');
-  task.fire('click');
-  assert.equal(task.attributes['aria-pressed'],'false');
-  ui.byClass('back')[0].fire('click');
+  assert.deepEqual(rows(reopened,'carry-tasks').map(node=>node.children[0].attributes['data-task-id']),['done','same-week']);
+  assert.equal(saved(ui).length,6);
+  assert.equal(saved(ui).find(t=>t.id==='old').date,'2026-10-30');
+  assert.equal(new Set(saved(ui).map(t=>t.id)).size,6);
+  // Completing from the original date also updates the same record/view.
+  ui.byClass('tasks')[0].querySelector('[data-task-id="same-week"]').fire('click');
+  assert(!rows(ui,'carry-tasks').some(node=>node.children[0].attributes['data-task-id']==='same-week'));
+});
+
+test('Yalnız tamamlanmış geçmiş görevler varsa geri alma kontrolü kalır', () => {
+  const ui=boot(stored([task('done','2026-11-01',true)]));
+  assert.equal(ui.byClass('carryover')[0].hidden,false);
+  assert.equal(rows(ui,'carry-tasks').length,0);
+  assert.equal(ui.byClass('completed-tasks')[0].hidden,true);
+  ui.byClass('completed-toggle')[0].fire('click');
+  clickTask(ui,'done','completed-tasks');
+  assert.equal(rows(ui,'carry-tasks').length,1);
+  assert.equal(saved(ui)[0].completed,false);
+});
+
+test('Eski gün bağlantısı ilgili haftayı açar; hatalı bağlantı uygulamayı bozmaz', () => {
+  const ui=boot(new Map(),'#gun/2027-01-01');
   assert.equal(ui.byClass('day').length,7);
-  assert.equal(ui.byClass('task').length,2);
+  assert.equal(ui.byClass('day')[4].id,'day-2027-01-01');
+  assert.equal(ui.document.scrolledTo,'day-2027-01-01');
+  assert.equal(ui.location.hash,'');
+  assert.equal(boot(new Map(),'#gun/bozuk').byClass('today').length,1);
+});
+
+test('Gün/hafta değişimi tarihleri yeniler, incelenen başka haftayı değiştirmez', () => {
+  const ui=boot();
   ui.byClass('day-title')[0].fire('click');
-  ui.history.back();
-  assert.equal(ui.byClass('day').length,7);
-  const ids=JSON.parse([...ui.values.values()][0]).map(task=>task.id);
-  assert.equal(new Set(ids).size,2);
+  ui.setNow('2026-11-13T12:00:00');
+  assert.equal(ui.byClass('today')[0].id,'day-2026-11-13');
+  assert.equal(ui.byClass('day-body')[0].hidden,false);
+  ui.setNow('2026-11-16T12:00:00');
+  assert.equal(ui.byClass('today')[0].id,'day-2026-11-16');
+  ui.byClass('previous-week')[0].fire('click');
+  const before=ui.byClass('week-range')[0].textContent;
+  ui.setNow('2026-11-23T12:00:00');
+  assert.equal(ui.byClass('week-range')[0].textContent,before);
 });
 
 test('Kaydetme hatasında taslak ve eski görevler kaybolmaz', () => {
   const values=new Map();
   const ui=boot(values);
-  ui.add(ui.byClass('add')[0],'Önceki görev');
+  ui.add(ui.byClass('add')[3],'Önceki görev');
   values.set=()=>{throw new Error('QuotaExceededError');};
-  ui.add(ui.byClass('add')[0],'Kaydedilemeyen taslak');
+  ui.add(ui.byClass('add')[3],'Kaydedilemeyen taslak');
   assert.equal(ui.byClass('task').length,1);
   assert.equal(ui.byClass('editor')[0].children[1].value,'Kaydedilemeyen taslak');
   assert.equal(ui.notice.hidden,false);
@@ -89,7 +211,50 @@ test('Kaydetme hatasında taslak ve eski görevler kaybolmaz', () => {
 
 test('Girdi metni HTML olarak yorumlanmaz', () => {
   const ui=boot();
-  ui.add(ui.byClass('add')[0],'<img src=x onerror=alert(1)>');
+  ui.add(ui.byClass('add')[3],'<img src=x onerror=alert(1)>');
   assert.equal(ui.byClass('task-text')[0].textContent,'<img src=x onerror=alert(1)>');
   assert.equal(ui.byClass('task-text')[0].children.length,0);
+});
+
+test('Bozuk veya okunamayan eski kayıtlar korunur; boş veri ile üzerlerine yazılmaz', () => {
+  const key=storage.storageKey('/haftalik/');
+  for (const raw of ['broken','{"tasks":[]}','[{"id":"missing-fields"}]']) {
+    const values=new Map([[key,raw]]);
+    const ui=boot(values);
+    assert.equal(ui.notice.hidden,false);
+    assert(ui.byClass('add').every(node=>node.disabled));
+    assert.equal(values.get(key),raw);
+  }
+});
+
+test('Başarısız tamamlama depodaki veriyi ve devreden sayacını değiştirmez', () => {
+  const values=stored([task('old','2026-11-01')]);
+  const ui=boot(values);
+  const before=values.get(storage.storageKey('/haftalik/'));
+  values.set=()=>{throw new Error('QuotaExceededError');};
+  clickTask(ui,'old');
+  assert.equal(values.get(storage.storageKey('/haftalik/')),before);
+  assert.equal(rows(ui,'carry-tasks')[0].children[0].attributes['aria-pressed'],'false');
+  assert.match(ui.byClass('carry-title')[0].textContent,/\(1\)/);
+  assert.equal(ui.notice.hidden,false);
+});
+
+test('IME, Escape ve odak kaybı mevcut yerinde yazma davranışını korur', () => {
+  const ui=boot();
+  ui.byClass('add')[3].fire('click');
+  let input=ui.byClass('editor')[0].children[1];
+  input.value='Türkçe taslak';
+  input.fire('compositionstart');
+  input.parent.fire('submit');
+  assert.equal(ui.byClass('editor').length,1);
+  assert.equal(ui.values.size,0);
+  input.fire('compositionend');
+  input.fire('keydown',{key:'Escape'});
+  assert.equal(ui.byClass('editor').length,0);
+  assert.equal(ui.values.size,0);
+  ui.byClass('add')[3].fire('click');
+  input=ui.byClass('editor')[0].children[1];input.value='Odak kaybında kaydet';
+  input.fire('blur');
+  assert.equal(saved(ui).length,1);
+  assert.equal(saved(ui)[0].text,'Odak kaybında kaydet');
 });
