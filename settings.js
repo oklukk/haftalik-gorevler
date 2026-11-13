@@ -1,4 +1,3 @@
-import { icon } from './icons.js';
 import { APP_VERSION } from './version.js';
 import { dateKey } from './dates.js';
 import { createBackup, parseBackup, previewMerge, MAX_BACKUP_BYTES } from './backup.js';
@@ -13,12 +12,6 @@ export function setupSettings({ getTasks, commitTasks, beforeOpen, afterClose, p
   };
   const action = (className, text, handler) => {
     const node = make('button', className, text);
-    const name = className.includes('export-backup') ? 'download' : className.includes('import-backup') ? 'upload' : className.includes('check-updates') || className.includes('activate-update') ? 'refresh' : className === 'sheet-close' ? 'x' : null;
-    if (name) {
-      node.replaceChildren(icon(name));
-      if (className !== 'sheet-close') node.append(make('span', 'setting-copy', text));
-      if (className.includes('sheet-action')) node.append(icon('chevron-right'));
-    }
     node.type = 'button';
     node.addEventListener('click', handler);
     return node;
@@ -122,13 +115,8 @@ export function setupSettings({ getTasks, commitTasks, beforeOpen, afterClose, p
   const check = action('check-updates sheet-action', 'Güncellemeleri Kontrol Et', () => updates.check());
   const activate = action('activate-update sheet-action', 'Şimdi Güncelle', () => updates.apply());
   activate.hidden = true;
-  const sectionHeading = (text, name) => {
-    const heading = make('h3', 'settings-section-title');
-    heading.append(icon(name), make('span', '', text)); return heading;
-  };
-  const version = make('p', 'app-version'); version.append(icon('info'), make('span', '', `Sürüm ${APP_VERSION}`));
-  dialog.append(top, sectionHeading('Verilerim', 'database'), exportButton, importButton, file, preview,
-    sectionHeading('Uygulama', 'settings'), check, activate, version, status);
+  dialog.append(top, make('h3', '', 'Verilerim'), exportButton, importButton, file, preview,
+    make('h3', '', 'Uygulama'), check, activate, make('p', 'app-version', `Sürüm ${APP_VERSION}`), status);
   document.body.append(dialog);
   dialog.addEventListener('click', event => {
     if (event.target !== dialog) return;
