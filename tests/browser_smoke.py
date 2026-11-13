@@ -154,7 +154,7 @@ def upgrade_check(browser, url, target, commit=LEGACY_COMMIT, previous="v1"):
     page.evaluate('navigator.serviceWorker.getRegistration().then(r => r.update())')
     page.wait_for_function('navigator.serviceWorker.getRegistration().then(r => !!r.waiting)')
     # Wait for actual activation with all old clients closed before reopening.
-    waiting_worker = next(worker for worker in context.service_workers if worker.evaluate('VERSION') == 'v6')
+    waiting_worker = next(worker for worker in context.service_workers if worker.evaluate('VERSION') == 'v7')
     page.close()
     waiting_worker.evaluate('() => new Promise(resolve => { const poll = () => { if (self.registration.active?.state === "activated" && !self.registration.waiting) resolve(); else setTimeout(poll, 20); }; poll(); })')
     page = context.new_page()
@@ -164,18 +164,18 @@ def upgrade_check(browser, url, target, commit=LEGACY_COMMIT, previous="v1"):
     page.set_default_navigation_timeout(20000)
     page.goto(url)
     page.wait_for_function('navigator.serviceWorker.getRegistration().then(r => !r.waiting && r.active?.state === "activated" && r.active === navigator.serviceWorker.controller)')
-    page.wait_for_function('caches.keys().then(keys => keys.some(k => k.endsWith(":v6")) && !keys.some(k => k.endsWith(":v5")) && !keys.some(k => k.endsWith(":v4")) && !keys.some(k => k.endsWith(":v1")) && !keys.some(k => k.endsWith(":v2")) && !keys.some(k => k.endsWith(":v3")))')
+    page.wait_for_function('caches.keys().then(keys => keys.some(k => k.endsWith(":v7")) && !keys.some(k => k.endsWith(":v6")) && !keys.some(k => k.endsWith(":v5")) && !keys.some(k => k.endsWith(":v4")) && !keys.some(k => k.endsWith(":v1")) && !keys.some(k => k.endsWith(":v2")) && !keys.some(k => k.endsWith(":v3")))')
     page.reload()
     expect(page.locator('.week-nav')).to_have_count(1)
     assert page.evaluate(f'JSON.parse(localStorage.getItem({json.dumps(KEY)}))') == SEED
-    page.wait_for_function('caches.keys().then(keys => keys.some(k => k.endsWith(":v6")) && !keys.some(k => k.endsWith(":v5")) && !keys.some(k => k.endsWith(":v4")) && !keys.some(k => k.endsWith(":v1")) && !keys.some(k => k.endsWith(":v2")) && !keys.some(k => k.endsWith(":v3")))')
+    page.wait_for_function('caches.keys().then(keys => keys.some(k => k.endsWith(":v7")) && !keys.some(k => k.endsWith(":v6")) && !keys.some(k => k.endsWith(":v5")) && !keys.some(k => k.endsWith(":v4")) && !keys.some(k => k.endsWith(":v1")) && !keys.some(k => k.endsWith(":v2")) && !keys.some(k => k.endsWith(":v3")))')
     context.set_offline(True)
     page.reload()
     expect(page.locator('.week-nav')).to_have_count(1)
     assert page.evaluate(f'JSON.parse(localStorage.getItem({json.dumps(KEY)}))') == SEED
     assert not upgrade_errors,upgrade_errors
     context.close()
-    print(f'PASS: {previous} → v6 PWA upgrade, old cache removal, unchanged existing records, offline updated shell')
+    print(f'PASS: {previous} → v7 PWA upgrade, old cache removal, unchanged existing records, offline updated shell')
 
 
 def settings_check(browser, url):
@@ -281,7 +281,7 @@ def live_update_check(browser,url,target):
     page.evaluate(f'localStorage.setItem({json.dumps(KEY)}, {json.dumps(json.dumps(SEED))})')
     page.reload();page.evaluate('navigator.serviceWorker.ready')
     page.wait_for_function('navigator.serviceWorker.controller !== null')
-    (target/'sw.js').write_text((ROOT/'sw.js').read_text().replace("const VERSION = 'v6'","const VERSION = 'v7'"))
+    (target/'sw.js').write_text((ROOT/'sw.js').read_text().replace("const VERSION = 'v7'","const VERSION = 'v8'"))
     (target/'version.js').write_text((ROOT/'version.js').read_text().replace('1.4.0','1.4.1'))
     page.locator('.settings-button').click();page.locator('.check-updates').click()
     expect(page.locator('.activate-update')).to_be_visible()
