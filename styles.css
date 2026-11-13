@@ -76,8 +76,8 @@ h2 { margin: 0; font-size: var(--font-day); line-height: 1.4; font-weight: 600; 
 .add { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 44px; margin-top: 3px; padding: 8px 10px; border: 1px solid #e3eadf; border-radius: var(--radius); background: #f5f8f2; color: #607454; text-align: left; font-size: var(--font-control); line-height: 22px; }
 .add .icon { width: 18px; height: 18px; flex-basis: 18px; }
 .add:active { background: #edf3e7; }
-.editor { display: flex; align-items: center; gap: 9px; min-height: 46px; margin-top: 3px; padding: 1px 9px; border: 1px solid #aabd9f; border-radius: var(--radius); background: #fafcf7; }
-.editor input, .task-edit input { width: 100%; min-width: 0; min-height: 44px; padding: 8px 0; border: 0; border-radius: 0; background: transparent; color: var(--ink); font-size: 16px; line-height: 24px; scroll-margin-top: calc(var(--header-height, 64px) + 12px); scroll-margin-bottom: 70px; }
+.editor { display: flex; align-items: center; gap: 9px; min-height: 44px; margin-top: 3px; padding: 0 9px; border: 1px solid #aabd9f; border-radius: var(--radius); background: #fafcf7; }
+.editor input, .task-edit input { width: 100%; min-width: 0; min-height: 42px; padding: 8px 0; border: 0; border-radius: 0; background: transparent; color: var(--ink); font-size: 16px; line-height: 22px; scroll-margin-top: calc(var(--header-height, 64px) + 12px); scroll-margin-bottom: 70px; }
 .editor input::placeholder { color: #83927c; }
 .task-edit { width: 100%; min-width: 0; margin: 4px 0; padding: 0 10px; border: 1px solid #b7c9ac; border-radius: var(--radius); background: #fafcf7; }
 .edit-actions { display: flex; justify-content: flex-end; gap: 6px; border-top: 1px solid var(--line); }
@@ -136,3 +136,16 @@ h3 { margin: 0; font-size: var(--font-control); font-weight: 600; }
   .app-title { font-size: 1.0625rem; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; } }
+
+/* Daily drag affordances exist only during an active hold. */
+.daily-tasks .task { touch-action: pan-y pinch-zoom; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.daily-tasks .task-row { position: relative; }
+.task-row.is-dragging { background: #e4eddf; border-radius: 8px; box-shadow: 0 2px 5px #293d3315; }
+.task-row.drop-before::before, .task-row.drop-after::after { content: ''; position: absolute; left: 0; right: 0; height: 2px; background: var(--green); border-radius: 2px; pointer-events: none; }
+.task-row.drop-before::before { top: -1px; }
+.task-row.drop-after::after { bottom: -1px; }
+.task-drag-active { cursor: grabbing; -webkit-user-select: none; user-select: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+.editor:focus-within, .task-edit:focus-within { border-color: var(--green); box-shadow: 0 0 0 1px #50765b22; }
+.editor input:focus-visible, .task-edit input:focus-visible { outline: none; }

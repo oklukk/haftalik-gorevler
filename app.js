@@ -1,3 +1,5 @@
+import { dailyOrder, moveInGroup } from './task-order.js';
+import { setupTaskDrag } from './drag-order.js';
 import { icon } from './icons.js';
 import { setupSettings } from './settings.js';
 import { dateKey, parseDate, weekDays, shortDate, fullDate, weekLabel, shiftWeek, weekTitle } from './dates.js';
@@ -22,6 +24,7 @@ let header, todayButton, carryHost;
 let framePending = false;
 let settings;
 let holdEditor = false;
+let taskDrag;
 let taskDialog, menuOpener, menuScroll = 0, menuLocked = false;
 
 function showNotice(message) {
@@ -71,6 +74,10 @@ function taskRow(task, carry = false) {
   control.setAttribute('aria-pressed', String(task.completed));
   control.setAttribute('data-task-id', task.id);
   control.disabled = !canWrite;
+  if (!carry) {
+    control.setAttribute('aria-keyshortcuts', 'Alt+ArrowUp Alt+ArrowDown');
+    control.setAttribute('aria-description', 'Sıralamak için basılı tutup sürükleyin; klavyede Alt ve yukarı veya aşağı oklarını kullanın.');
+  }
   const mark = element('span', 'task-mark');
   mark.setAttribute('aria-hidden', 'true');
   mark.append(icon('circle', document), icon('check', document));
@@ -119,6 +126,7 @@ function preserveTaskDraft() {
   setTimeout(() => { if (!taskDialog?.open && !settings?.isOpen()) holdEditor = false; }, 0);
 }
 function beginEdit(id, row, carry) {
+  taskDrag?.cancel();
   const task = tasks.find(value => value.id === id);
   if (!task) return;
   const form = element('form', 'task-edit');
@@ -242,7 +250,7 @@ function openTaskMenu(id, source, carry) {
 }
 function listFor(date) {
   const container = element('div');
-  const list = element('ul', 'tasks');
+  const list = element('ul', 'tasks daily-tasks');
   list.setAttribute('aria-label', `${fullDate(date)} görevleri`);
   const dayKey = dateKey(date);
   dayLists.set(dayKey, list);
@@ -348,10 +356,11 @@ function renderCarryover() {
   carryHost.append(heading, body);
 }
 function refreshTasks() {
+  taskDrag?.cancel();
   for (const [date, list] of dayLists) {
     list.replaceChildren();
     const daily = tasks.filter(task => task.date === date);
-    daily.forEach(task => list.append(taskRow(task)));
+    dailyOrder(daily).forEach(task => list.append(taskRow(task)));
     const progress = daySections.get(date).querySelector('.day-progress');
     if (progress) {
       const percent = daily.length ? daily.filter(task => task.completed).length / daily.length * 100 : 0;
@@ -375,6 +384,7 @@ function setDayOpen(date, open) {
   scheduleVisibility();
 }
 function renderWeek() {
+  taskDrag?.cancel();
   app.replaceChildren();
   dayLists.clear();
   daySections.clear();
@@ -546,6 +556,22 @@ if ('ResizeObserver' in window) new ResizeObserver(measureHeader).observe(app);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshDate(); });
 window.addEventListener('pageshow', refreshDate);
 setInterval(refreshDate, 30_000);
+taskDrag = setupTaskDrag({
+  root: app,
+  getTasks: () => tasks,
+  canStart: () => canWrite && !editor && !taskDialog?.open && !settings?.isOpen(),
+  drop: (id, target, after) => {
+    const next = moveInGroup(tasks, id, target, after);
+    if (next === tasks) return true;
+    if (!persist(next)) {
+      showNotice('Sıralama kaydedilemedi. Önceki görev sırası korundu.');
+      return false;
+    }
+    refreshTasks();
+    dayLists.get(tasks.find(task => task.id === id).date)?.querySelector(`[data-task-id="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
+    return true;
+  }
+});
 settings = setupSettings({
   getTasks: () => readTasks(localStorage, key),
   commitTasks: next => {

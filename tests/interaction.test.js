@@ -7,6 +7,7 @@ import vm from 'node:vm';
 import * as dates from '../dates.js';
 import * as storage from '../storage.js';
 import * as icons from '../icons.js';
+import * as ordering from '../task-order.js';
 
 class Node {
   constructor(tag, document) { this.tagName=tag; this.document=document; this.children=[]; this.handlers={}; this.attributes={}; this.hidden=false; this.value=''; this.ownText=''; this.style={}; }
@@ -52,7 +53,7 @@ function boot(values=new Map(), hash='') {
   let now=new Date(2026,10,12,12);
   class Clock extends Date { constructor(...args) { super(...(args.length ? args : [now])); } }
   const frames=[];
-  const sandbox={setupSettings:()=>({isOpen:()=>false}),...dates,...storage,...icons,document,setTimeout(){},location,history,localStorage,URL,crypto,Date:Clock,Intl,CSS:{escape:value=>value},navigator:{},requestAnimationFrame:fn=>frames.push(fn),setInterval(fn){listeners.tick=fn;},window:{scrollY:80,innerHeight:844,scrollTo(value){this.scrollY=value.top;document.scrollCalls=(document.scrollCalls??0)+1;},addEventListener(name,fn){listeners[name]=fn;}}};
+  const sandbox={setupTaskDrag:()=>({cancel(){}}),setupSettings:()=>({isOpen:()=>false}),...dates,...storage,...icons,...ordering,document,setTimeout(){},location,history,localStorage,URL,crypto,Date:Clock,Intl,CSS:{escape:value=>value},navigator:{},requestAnimationFrame:fn=>frames.push(fn),setInterval(fn){listeners.tick=fn;},window:{scrollY:80,innerHeight:844,scrollTo(value){this.scrollY=value.top;document.scrollCalls=(document.scrollCalls??0)+1;},addEventListener(name,fn){listeners[name]=fn;}}};
   const source=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8')
     .replace(/^import .*;\n/gm,'')
     .replace('import.meta.url',JSON.stringify('https://example.test/haftalik/app.js'));
@@ -362,4 +363,21 @@ test('Devreden görev düzenlemesini kaydedip bölümü kapatmak açık/kapalı 
   assert.equal(saved(ui)[0].text,'Yeni metin');
   assert.equal(ui.byClass('carry-title')[0].attributes['aria-expanded'],'false');
   assert.equal(ui.byClass('carry-tasks')[0].parent.hidden,true);
+});
+
+test('Günlük görünüm kararlı gruplar; tamamlama/geri alma kalıcı sırayı, sayaç ve devredenleri korur',()=>{
+  const records=[task('A','2026-11-12'),task('B','2026-11-12',true),task('C','2026-11-12'),task('D','2026-11-12',true),task('past','2026-11-09')];
+  const ui=boot(stored(records));
+  const visible=()=>ui.byClass('daily-tasks')[3].children.map(row=>row.children[0].attributes['data-task-id']);
+  assert.deepEqual(visible(),['A','C','B','D']);
+  ui.byClass('daily-tasks')[3].querySelector('[data-task-id="A"]').fire('click');
+  assert.deepEqual(visible(),['C','A','B','D']);
+  assert.deepEqual(saved(ui).map(t=>t.id),records.map(t=>t.id));
+  ui.byClass('daily-tasks')[3].querySelector('[data-task-id="B"]').fire('click');
+  assert.deepEqual(visible(),['B','C','A','D']);
+  assert.equal(ui.byClass('day-count')[3].textContent,'2/4 tamamlandı');
+  assert.equal(ui.byClass('progress-fill')[0].style.width,'50%');
+  assert.equal(rows(ui,'carry-tasks').length,1);
+  const reopened=boot(ui.values);
+  assert.deepEqual(reopened.byClass('daily-tasks')[3].children.map(row=>row.children[0].attributes['data-task-id']),visible());
 });
