@@ -120,15 +120,31 @@ export function setupSettings({ getTasks, commitTasks, beforeOpen, afterClose, p
   const exportButton = action('export-backup sheet-action', 'Verileri Yedekle', exportData);
   const importButton = action('import-backup sheet-action', 'Yedeği Geri Yükle', () => file.click());
   const check = action('check-updates sheet-action', 'Güncellemeleri Kontrol Et', () => updates.check());
-  const activate = action('activate-update sheet-action', 'Şimdi Güncelle', () => updates.apply());
+  const activate = action('activate-update sheet-action', 'Şimdi Güncelle', () => confirmUpdate(activate));
   activate.hidden = true;
   const sectionHeading = (text, name) => {
     const heading = make('h3', 'settings-section-title');
     heading.append(icon(name), make('span', '', text)); return heading;
   };
   const version = make('p', 'app-version'); version.append(icon('info'), make('span', '', `Sürüm ${APP_VERSION}`));
-  dialog.append(top, sectionHeading('Verilerim', 'database'), exportButton, importButton, file, preview,
-    sectionHeading('Uygulama', 'settings'), check, activate, version, status);
+  const content = make('div', 'settings-content');
+  content.append(sectionHeading('Verilerim', 'database'), exportButton, importButton, file, preview,
+    sectionHeading('Uygulama', 'settings'), check, activate, version);
+  const confirmation = make('section', 'update-confirmation'); confirmation.hidden = true;
+  confirmation.append(make('p', 'settings-status', 'Uygulamayı güncellemeden önce görevlerinizi yedeklemeyi değerlendirin. Mevcut verileriniz normalde korunur ancak yedek almak ek güvence sağlar.'));
+  const backupFirst = action('update-backup sheet-action', 'Verileri Yedekle', exportData);
+  backupFirst.replaceChildren(icon('download'), make('span', 'setting-copy', 'Verileri Yedekle'));
+  const postpone = action('update-confirm-later sheet-action', 'Daha Sonra', () => { updates.later(); dialog.close(); });
+  const proceed = action('update-confirm-continue sheet-action', 'Güncellemeye Devam Et', () => updates.apply());
+  confirmation.append(backupFirst, postpone, proceed);
+  function confirmUpdate(source) {
+    open(source);
+    content.hidden = true; confirmation.hidden = false;
+    title.textContent = 'Güncelleme Hazır';
+    close.setAttribute('aria-label', 'Güncelleme onayını kapat');
+    report(''); backupFirst.focus({ preventScroll: true });
+  }
+  dialog.append(top, content, confirmation, status);
   document.body.append(dialog);
   dialog.addEventListener('click', event => {
     if (event.target !== dialog) return;
@@ -137,6 +153,8 @@ export function setupSettings({ getTasks, commitTasks, beforeOpen, afterClose, p
   });
   dialog.addEventListener('close', () => {
     fileSequence++; resetImport();
+    content.hidden = false; confirmation.hidden = true;
+    title.textContent = 'Ayarlar'; close.setAttribute('aria-label', 'Ayarları kapat');
     document.body.style.position = ''; document.body.style.top = ''; document.body.style.width = '';
     window.scrollTo({ top: scrollY, behavior: 'instant' });
     afterClose(); opener?.focus({ preventScroll: true });
@@ -152,7 +170,7 @@ export function setupSettings({ getTasks, commitTasks, beforeOpen, afterClose, p
   banner.setAttribute('aria-live', 'polite');
   banner.append(make('strong', '', 'Güncelleme Hazır'), make('p', '', 'Uygulamanın yeni bir sürümü hazır.'));
   const later = action('update-later', 'Daha Sonra', () => updates.later());
-  const now = action('update-now', 'Şimdi Güncelle', () => { open(now); updates.apply(); });
+  const now = action('update-now', 'Şimdi Güncelle', () => confirmUpdate(now));
   const preserveDraft = () => {
     beforeOpen();
     setTimeout(() => { if (!dialog.open) afterClose(); }, 0);
