@@ -553,6 +553,14 @@ window.addEventListener('resize', measureHeader);
 window.visualViewport?.addEventListener('resize', scheduleVisibility);
 window.visualViewport?.addEventListener('scroll', scheduleVisibility);
 if ('ResizeObserver' in window) new ResizeObserver(measureHeader).observe(app);
+// Pointer-triggered focus restoration must not inherit the previous keyboard ring.
+document.addEventListener('pointerdown', () => document.documentElement.setAttribute('data-input', 'pointer'), true);
+document.addEventListener('keydown', event => {
+  const textEntry = event.target instanceof Element && event.target.matches('input, textarea, [contenteditable="true"]');
+  if (event.key === 'Tab' || (!textEntry && !['Shift', 'Control', 'Alt', 'Meta'].includes(event.key))) {
+    document.documentElement.setAttribute('data-input', 'keyboard');
+  }
+}, true);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshDate(); });
 window.addEventListener('pageshow', refreshDate);
 setInterval(refreshDate, 30_000);
