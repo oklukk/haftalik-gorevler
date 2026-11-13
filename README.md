@@ -44,18 +44,6 @@ Android’de aynı HTTPS adresini Chrome ile açın. Menüde **Ana ekrana ekle**
 - Tarayıcı/site verilerini silmek görevleri de siler. Safari ve ana ekrana eklenen uygulamada depolama davranışı iOS sürümüne göre farklılaşabilir; düzenli kullanım ve testi ana ekran uygulamasında yapın. Gizli gezinmeyi kalıcı saklama için kullanmayın.
 - Service worker yalnızca uygulama dosyalarını önbelleğe alır; görevleri sunucuya göndermez. Sonraki bir sürümde dosyaları değiştirirken `sw.js` içindeki `VERSION` değerini artırın. Yeni önbellek hazır olduktan sonra tüm uygulama sekme/pencerelerini kapatıp açınca güncelleme devreye girer.
 
-## Yumuşak Modern v2 ve görev işlemleri
-
-Yerel SVG ikonları, dairesel tamamlama kontrolleri ve hafif yeşil ekleme alanları ortak bir görsel sistem kullanır. Uygulama adı kaydırmada ekrandan çıkar; yalnızca hafta seçicisi sabit kalır. Dar ekranlarda sayaçlar ikinci satıra geçebilir; “Bugün” etiketi korunur. Bugünün ilerleme çubuğu yalnız o tarihin kendi görevlerini hesaplar, boş veya kapalı bölümde görünmez.
-
-Görev satırının ana alanına dokunmak tamamlamayı değiştirir. Sağdaki üç nokta ayrı bir düğmedir ve tamamlamayı tetiklemez:
-
-- **Görevi Düzenle:** Metni aynı satırda değiştirin; Kaydet/Enter ile kaydedin veya İptal/Escape ile geri dönün. Kimlik, tarih ve tamamlanma durumu korunur. Boş metin ve kaydetme hataları mevcut kaydı değiştirmez; taslak görünür kalır. Başka bir işleme geçişte taslak kaydedilir; kaydedilemiyorsa işlem durdurulur.
-- **Tarihini Değiştir:** Yerel tarih seçicisiyle yalnız tarihi değiştirir; görevi kopyalamaz. Sayaçlar, devredenler ve bugünün ilerlemesi yeniden hesaplanır. İptal veya geçersiz tarih hiçbir kaydı değiştirmez.
-- **Görevi Sil:** “Görev silinsin mi?” onayından sonra yalnız seçilen kayıt silinir. Vazgeç işlemi iptal eder; kaydetme başarısızsa görev korunur. Silinen kayıt yedeklere dahil edilmez.
-
-Bu işlemler çevrimdışı da çalışır. Menü dışına dokunma ve Escape menüyü kapatır. İşlemler mevcut `localStorage` anahtarını ve `{ id, date, text, completed }` modelini kullanır. Uygulama sürümü 1.3.0, önbellek sürümü v4'tür; depolama ve yedek biçim sürümleri değişmemiştir.
-
 ## Ayarlar, yedekleme ve güncelleme
 
 Üstteki dişli simgesi, aynı ekran üzerinde Ayarlar panelini açar. Açık görev taslağı ve sayfanın kaydırma konumu korunur. Yazı boyutları merkezi CSS değişkenleriyle yönetilir; günlük sayaçlar yalnızca o tarihin kendi görevlerini sayar.
@@ -80,4 +68,4 @@ Gerçek iPhone/Safari ve Android cihazında test yapılmadı. Chromium mobil ekr
 
 ## Dosyalar
 
-`index.html` kabuk ve PWA meta bilgileri; `styles.css` mobil tasarım; `app.js` görünüm ve etkileşimler; `dates.js` yerel tarih işlemleri; `storage.js` veri kaydı; `sw.js` çevrimdışı önbellek; `manifest.webmanifest` yükleme bilgileri; `icons/` ana ekran simgeleri; `backup.js` yerel yedek doğrulama ve birleştirme; `settings.js` ayarlar ve dosya işlemleri; `updates.js` service worker güncelleme akışı; `version.js` uygulama sürümü; `icons.js` yerel SVG simgeleri; `tests/` mantık ve tarayıcı testleri.
+`index.html` kabuk ve PWA meta bilgileri; `styles.css` mobil tasarım; `app.js` görünüm ve etkileşimler; `dates.js` yerel tarih işlemleri; `storage.js` veri kaydı; `sw.js` çevrimdışı önbellek; `manifest.webmanifest` yükleme bilgileri; `icons/` ana ekran simgeleri; `backup.js` yerel yedek doğrulama ve birleştirme; `settings.js` ayarlar ve dosya işlemleri; `updates.js` service worker güncelleme akışı; `version.js` uygulama sürümü; `tests/` mantık ve tarayıcı testleri.
