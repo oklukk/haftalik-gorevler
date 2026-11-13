@@ -44,6 +44,28 @@ Android’de aynı HTTPS adresini Chrome ile açın. Menüde **Ana ekrana ekle**
 - Tarayıcı/site verilerini silmek görevleri de siler. Safari ve ana ekrana eklenen uygulamada depolama davranışı iOS sürümüne göre farklılaşabilir; düzenli kullanım ve testi ana ekran uygulamasında yapın. Gizli gezinmeyi kalıcı saklama için kullanmayın.
 - Service worker yalnızca uygulama dosyalarını önbelleğe alır; görevleri sunucuya göndermez. Sonraki bir sürümde dosyaları değiştirirken `sw.js` içindeki `VERSION` değerini artırın. Yeni önbellek hazır olduktan sonra tüm uygulama sekme/pencerelerini kapatıp açınca güncelleme devreye girer.
 
+## Görev sırası ve kompakt girişler
+
+Günlük listeler, kalıcı kayıt dizisini değiştirmeden tamamlanmamış görevleri üstte, tamamlananları altta gösterir. Tamamlamayı geri almak görevi manuel sırasına uygun konuma döndürür. Yeni görevler kendi gününün tamamlanmamış grubunun sonuna eklenir. Devreden görevlerin tarihe göre sıralaması ve geri alma davranışı aynı kalır.
+
+Günlük bir görevin ana alanına yaklaşık 400 ms basılı tutup yukarı/aşağı taşıyın. Vurgulanan görev ve ince hedef çizgisi bırakma konumunu gösterir. Yalnız aynı gün ve aynı tamamlanma grubunda sıralama yapılır. Üç nokta, devreden görevler ve açık metin girişleri sürüklemeyi başlatmaz. Normal kısa dokunma tamamlamayı değiştirir; uzun basmadan önce kaydırmaya başlamak sürüklemeyi iptal eder. Parmak iptali, odak kaybı veya Escape eski sırayı korur. Kenarlara yaklaşınca kontrollü otomatik kaydırma yapılır. Klavyede görev üzerinde **Alt + Yukarı/Aşağı** aynı grubun içinde sıralar; görünür ek düğme bulunmaz.
+
+Sürükleme sırasında kayıt yapılmaz. Geçerli ve değişiklik oluşturan bırakmada tek `localStorage` yazması yapılır. Kaydetme başarısızsa önceki sıra ve görevler korunur. Manuel sıra mevcut dizinin sırasıdır; `order` veya başka veri alanı eklenmez. JSON yedeği bu sırayı aynen içerir. Boş cihaza birleştirme veya onaylı yerine yükleme yedekteki sırayı korur; dolu cihaza birleştirme mevcut yerel kayıtların sırasını koruyup yalnız yeni kayıtları ekler.
+
+Yeni görev alanı toplam 44 px, düzenleme metin girişi yaklaşık 42 px yüksekliğindedir; ikisinin de yazısı 16 px kalır. Kaydet/İptal dokunma hedefleri en az 44 px'tir. Gerçek iPhone/Safari klavyesi ve uzun basma davranışı cihazda ayrıca denenmelidir; Chromium dokunma testleri fiziksel cihaz garantisi değildir.
+
+## Yumuşak Modern v2 ve görev işlemleri
+
+Yerel SVG ikonları, dairesel tamamlama kontrolleri ve hafif yeşil ekleme alanları ortak bir görsel sistem kullanır. Uygulama adı kaydırmada ekrandan çıkar; yalnızca hafta seçicisi sabit kalır. Dar ekranlarda sayaçlar ikinci satıra geçebilir; “Bugün” etiketi korunur. Bugünün ilerleme çubuğu yalnız o tarihin kendi görevlerini hesaplar, boş veya kapalı bölümde görünmez.
+
+Görev satırının ana alanına dokunmak tamamlamayı değiştirir. Sağdaki üç nokta ayrı bir düğmedir ve tamamlamayı tetiklemez:
+
+- **Görevi Düzenle:** Metni aynı satırda değiştirin; Kaydet/Enter ile kaydedin veya İptal/Escape ile geri dönün. Kimlik, tarih ve tamamlanma durumu korunur. Boş metin ve kaydetme hataları mevcut kaydı değiştirmez; taslak görünür kalır. Başka bir işleme geçişte taslak kaydedilir; kaydedilemiyorsa işlem durdurulur.
+- **Tarihini Değiştir:** Yerel tarih seçicisiyle yalnız tarihi değiştirir; görevi kopyalamaz. Sayaçlar, devredenler ve bugünün ilerlemesi yeniden hesaplanır. İptal veya geçersiz tarih hiçbir kaydı değiştirmez.
+- **Görevi Sil:** “Görev silinsin mi?” onayından sonra yalnız seçilen kayıt silinir. Vazgeç işlemi iptal eder; kaydetme başarısızsa görev korunur. Silinen kayıt yedeklere dahil edilmez.
+
+Bu işlemler çevrimdışı da çalışır. Menü dışına dokunma ve Escape menüyü kapatır. İşlemler mevcut `localStorage` anahtarını ve `{ id, date, text, completed }` modelini kullanır. Uygulama sürümü 1.4.0, önbellek sürümü v6'dır; depolama ve yedek biçim sürümleri değişmemiştir.
+
 ## Ayarlar, yedekleme ve güncelleme
 
 Üstteki dişli simgesi, aynı ekran üzerinde Ayarlar panelini açar. Açık görev taslağı ve sayfanın kaydırma konumu korunur. Yazı boyutları merkezi CSS değişkenleriyle yönetilir; günlük sayaçlar yalnızca o tarihin kendi görevlerini sayar.
@@ -68,4 +90,6 @@ Gerçek iPhone/Safari ve Android cihazında test yapılmadı. Chromium mobil ekr
 
 ## Dosyalar
 
-`index.html` kabuk ve PWA meta bilgileri; `styles.css` mobil tasarım; `app.js` görünüm ve etkileşimler; `dates.js` yerel tarih işlemleri; `storage.js` veri kaydı; `sw.js` çevrimdışı önbellek; `manifest.webmanifest` yükleme bilgileri; `icons/` ana ekran simgeleri; `backup.js` yerel yedek doğrulama ve birleştirme; `settings.js` ayarlar ve dosya işlemleri; `updates.js` service worker güncelleme akışı; `version.js` uygulama sürümü; `tests/` mantık ve tarayıcı testleri.
+`index.html` kabuk ve PWA meta bilgileri; `styles.css` mobil tasarım; `app.js` görünüm ve etkileşimler; `dates.js` yerel tarih işlemleri; `storage.js` veri kaydı; `sw.js` çevrimdışı önbellek; `manifest.webmanifest` yükleme bilgileri; `icons/` ana ekran simgeleri; `backup.js` yerel yedek doğrulama ve birleştirme; `settings.js` ayarlar ve dosya işlemleri; `updates.js` service worker güncelleme akışı; `version.js` uygulama sürümü; `icons.js` yerel SVG simgeleri; `tests/` mantık ve tarayıcı testleri.
+
+Sıralama için ek tarayıcı kontrolü: bulut ortamında `python3 tests/browser_order.py`. Chromium CDP'nin gerçek Touch/Pointer olayları ve fare hareketleriyle uzun basma, kısa dokunma, normal kaydırma, iptal, sınırlar, tek yazma, kota hatası, yeniden açılış, klavye alternatifi, çevrimdışı çalışma ve yedek sırası kontrol edilir. `task-order.js` kararlı gruplama ve kayıt dizisinin yeniden sıralanmasını, `drag-order.js` geçici sürükleme etkileşimini yönetir.

@@ -89,7 +89,7 @@ test('Service worker: alt dizin, ilk önbellek, çevrimdışı açılış ve gü
   vm.runInNewContext(fs.readFileSync(new URL('../sw.js',import.meta.url),'utf8'), {
     URL, Request,
     self: { registration:{scope}, clients:{ async claim() {} }, addEventListener:(name,fn) => { handlers[name]=fn; } },
-    caches:{ async open(){ return cache; }, async keys(){ return [`${prefix}v2`,`${prefix}v3`,'another-app']; }, async delete(key){deleted.push(key);} },
+    caches:{ async open(){ return cache; }, async keys(){ return [`${prefix}v6`,`${prefix}v7`,'another-app']; }, async delete(key){deleted.push(key);} },
     fetch:async () => {throw new Error('Çevrimdışı');}
   });
   let pending;
@@ -98,7 +98,7 @@ test('Service worker: alt dizin, ilk önbellek, çevrimdışı açılış ve gü
   assert(entries.has(`${scope}app.js`));
   handlers.activate({waitUntil:promise=>{pending=promise;}});
   await pending;
-  assert.deepEqual(deleted,[`${prefix}v2`]);
+  assert.deepEqual(deleted,[`${prefix}v6`]);
   for (const [path,mode,expected] of [['','navigate','./'],['app.js','cors','./app.js'],['?acilis=1','navigate','./index.html']]) {
     handlers.fetch({ request:{url:scope+path,method:'GET',mode}, respondWith:promise=>{pending=promise;} });
     assert.equal((await pending).file, expected);
