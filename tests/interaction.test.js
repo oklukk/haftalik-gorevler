@@ -182,7 +182,7 @@ test('Devredenler: tarih sırası, tek kayıt, geçici tamamlama ve geri alma', 
 
 test('Yalnız tamamlanmış geçmiş görevler varsa kayıt kendi gününde kalır', () => {
   const ui=boot(stored([task('done','2026-11-01',true)]));
-  assert.equal(ui.byClass('carryover')[0].hidden,false);
+  assert.equal(ui.byClass('carryover')[0].hidden,true);
   assert.equal(rows(ui,'carry-tasks').length,0);
   assert.equal(ui.byClass('completed-tasks').length,0);
   assert.equal(ui.byClass('completed-toggle').length,0);
@@ -197,6 +197,24 @@ test('Yalnız tamamlanmış geçmiş görevler varsa kayıt kendi gününde kal�
   ui.byClass('next-week')[0].fire('click'); ui.flush();
   ui.byClass('next-week')[0].fire('click'); ui.flush();
   assert.deepEqual(rows(ui,'carry-tasks').map(node=>node.children[0].attributes['data-task-id']),['done']);
+});
+
+test('Devreden son görev tamamlanırsa oturumda geri alınabilir, yeniden açılınca boş bölüm gizlenir', () => {
+  const ui=boot(stored([task('last','2026-11-09')]));
+  assert.equal(ui.byClass('carryover')[0].hidden,false);
+  clickTask(ui,'last');
+  assert.equal(saved(ui)[0].completed,true);
+  assert.equal(ui.byClass('carryover')[0].hidden,false);
+  assert.equal(rows(ui,'carry-tasks').length,1);
+  assert.match(ui.byClass('carry-title')[0].textContent,/Devreden Görevler \(0\)/);
+  clickTask(ui,'last');
+  assert.equal(saved(ui)[0].completed,false);
+  assert.equal(ui.byClass('carryover')[0].hidden,false);
+  clickTask(ui,'last');
+  const reopened=boot(ui.values);
+  assert.equal(reopened.byClass('carryover')[0].hidden,true);
+  assert.equal(rows(reopened,'carry-tasks').length,0);
+  assert.equal(saved(reopened)[0].completed,true);
 });
 
 test('Eski gün bağlantısı ilgili haftayı açar; hatalı bağlantı uygulamayı bozmaz', () => {

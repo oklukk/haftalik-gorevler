@@ -126,9 +126,20 @@ def check(browser, url):
     page.locator('.editor input').press('Enter')
     page.reload()
     expect(page.locator('.today .tasks').first).to_contain_text('Çevrimdışı görev')
+    # Once all earlier tasks are complete, the empty carryover header disappears
+    # without deleting or changing the tasks saved in localStorage.
+    before = page.evaluate(f'JSON.parse(localStorage.getItem({json.dumps(KEY)}))')
+    page.evaluate("""key => {
+      const records = JSON.parse(localStorage.getItem(key));
+      localStorage.setItem(key, JSON.stringify(records.map(task =>
+        task.date < '2026-11-12' ? {...task, completed: true} : task)));
+    }""", KEY)
+    page.reload()
+    expect(page.locator('.carryover')).to_be_hidden()
+    assert len(page.evaluate(f'JSON.parse(localStorage.getItem({json.dumps(KEY)}))')) == len(before)
     assert not errors, errors
     context.close()
-    print('PASS: mobile UI, collapse, weeks, scrolling, carryover/undo, legacy links, subdirectory, offline persistence')
+    print('PASS: mobile UI, collapse, weeks, scrolling, carryover/undo, empty carryover, legacy links, subdirectory, offline persistence')
 
 
 def upgrade_check(browser, url, target, commit=LEGACY_COMMIT, previous="v1"):
@@ -155,7 +166,7 @@ def upgrade_check(browser, url, target, commit=LEGACY_COMMIT, previous="v1"):
     page.evaluate('navigator.serviceWorker.getRegistration().then(r => r.update())')
     page.wait_for_function('navigator.serviceWorker.getRegistration().then(r => !!r.waiting)')
     # Wait for actual activation with all old clients closed before reopening.
-    waiting_worker = next(worker for worker in context.service_workers if worker.evaluate('VERSION') == 'v9')
+    waiting_worker = next(worker for worker in context.service_workers if worker.evaluate('VERSION') == 'v10')
     page.close()
     waiting_worker.evaluate('() => new Promise(resolve => { const poll = () => { if (self.registration.active?.state === "activated" && !self.registration.waiting) resolve(); else setTimeout(poll, 20); }; poll(); })')
     page = context.new_page()
@@ -165,18 +176,18 @@ def upgrade_check(browser, url, target, commit=LEGACY_COMMIT, previous="v1"):
     page.set_default_navigation_timeout(20000)
     page.goto(url)
     page.wait_for_function('navigator.serviceWorker.getRegistration().then(r => !r.waiting && r.active?.state === "activated" && r.active === navigator.serviceWorker.controller)')
-    page.wait_for_function('caches.keys().then(keys => keys.some(k => k.endsWith(":v9")) && !keys.some(k => k.endsWith(":v7")) && !keys.some(k => k.endsWith(":v6")) && !keys.some(k => k.endsWith(":v5")) && !keys.some(k => k.endsWith(":v4")) && !keys.some(k => k.endsWith(":v1")) && !keys.some(k => k.endsWith(":v2")) && !keys.some(k => k.endsWith(":v3")))')
+    page.wait_for_function('caches.keys().then(keys => keys.some(k => k.endsWith(":v10")) && !keys.some(k => k.endsWith(":v7")) && !keys.some(k => k.endsWith(":v6")) && !keys.some(k => k.endsWith(":v5")) && !keys.some(k => k.endsWith(":v4")) && !keys.some(k => k.endsWith(":v1")) && !keys.some(k => k.endsWith(":v2")) && !keys.some(k => k.endsWith(":v3")))')
     page.reload()
     expect(page.locator('.week-nav')).to_have_count(1)
     assert page.evaluate(f'JSON.parse(localStorage.getItem({json.dumps(KEY)}))') == SEED
-    page.wait_for_function('caches.keys().then(keys => keys.some(k => k.endsWith(":v9")) && !keys.some(k => k.endsWith(":v7")) && !keys.some(k => k.endsWith(":v6")) && !keys.some(k => k.endsWith(":v5")) && !keys.some(k => k.endsWith(":v4")) && !keys.some(k => k.endsWith(":v1")) && !keys.some(k => k.endsWith(":v2")) && !keys.some(k => k.endsWith(":v3")))')
+    page.wait_for_function('caches.keys().then(keys => keys.some(k => k.endsWith(":v10")) && !keys.some(k => k.endsWith(":v7")) && !keys.some(k => k.endsWith(":v6")) && !keys.some(k => k.endsWith(":v5")) && !keys.some(k => k.endsWith(":v4")) && !keys.some(k => k.endsWith(":v1")) && !keys.some(k => k.endsWith(":v2")) && !keys.some(k => k.endsWith(":v3")))')
     context.set_offline(True)
     page.reload()
     expect(page.locator('.week-nav')).to_have_count(1)
     assert page.evaluate(f'JSON.parse(localStorage.getItem({json.dumps(KEY)}))') == SEED
     assert not upgrade_errors,upgrade_errors
     context.close()
-    print(f'PASS: {previous} → v9 PWA upgrade, old cache removal, unchanged existing records, offline updated shell')
+    print(f'PASS: {previous} → v10 PWA upgrade, old cache removal, unchanged existing records, offline updated shell')
 
 
 def settings_check(browser, url):
@@ -216,7 +227,7 @@ def settings_check(browser, url):
     assert abs(page.evaluate('scrollY')-y) <= 1
     expect(page.locator('.editor input')).to_have_value('Panel açılırken korunan taslak')
     page.locator('.settings-button').click()
-    expect(page.locator('.app-version')).to_have_text('Sürüm 1.4.2')
+    expect(page.locator('.app-version')).to_have_text('Sürüm 1.4.3')
     # Downloads contain all stored records, and export/import make no network requests.
     requests=[]
     page.on('request',lambda request: requests.append(request.url))
@@ -282,8 +293,8 @@ def live_update_check(browser,url,target):
     page.evaluate(f'localStorage.setItem({json.dumps(KEY)}, {json.dumps(json.dumps(SEED))})')
     page.reload();page.evaluate('navigator.serviceWorker.ready')
     page.wait_for_function('navigator.serviceWorker.controller !== null')
-    (target/'sw.js').write_text((ROOT/'sw.js').read_text().replace("const VERSION = 'v9'","const VERSION = 'v10'"))
-    (target/'version.js').write_text((ROOT/'version.js').read_text().replace('1.4.2','1.4.3'))
+    (target/'sw.js').write_text((ROOT/'sw.js').read_text().replace("const VERSION = 'v10'","const VERSION = 'v11'"))
+    (target/'version.js').write_text((ROOT/'version.js').read_text().replace('1.4.3','1.4.4'))
     page.locator('.settings-button').click();page.locator('.check-updates').click()
     expect(page.locator('.activate-update')).to_be_visible()
     expect(page.locator('.settings-sheet > .settings-status')).to_have_text('Güncelleme Hazır')
@@ -320,10 +331,10 @@ def live_update_check(browser,url,target):
     other=context.new_page();other.goto(url)
     page.locator('.update-confirm-continue').click()
     expect(page.locator('.settings-sheet > .settings-status')).to_contain_text('Diğer uygulama')
-    expect(page.locator('.app-version')).to_have_text('Sürüm 1.4.2')
+    expect(page.locator('.app-version')).to_have_text('Sürüm 1.4.3')
     other.close()
     page.locator('.update-confirm-continue').click()
-    page.wait_for_function('document.querySelector(".settings-sheet .app-version")?.textContent === "Sürüm 1.4.2"')
+    page.wait_for_function('document.querySelector(".settings-sheet .app-version")?.textContent === "Sürüm 1.4.3"')
     records=page.evaluate(f'JSON.parse(localStorage.getItem({json.dumps(KEY)}))')
     assert len(records)==6 and records[:5]==SEED and records[-1]['text']=='Güncellemeden önce koru'
     context.set_offline(True)
