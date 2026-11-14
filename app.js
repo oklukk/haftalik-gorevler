@@ -19,7 +19,6 @@ const daySections = new Map();
 // View state only: no duplicate task records or changes to original dates.
 const retainedCompleted = new Set();
 let carryOpen = true;
-let completedOpen = false;
 let header, todayButton, carryHost;
 let framePending = false;
 let settings;
@@ -314,7 +313,6 @@ function renderCarryover() {
   const past = tasks.filter(task => task.date < visibleToday && parseDate(task.date))
     .sort((a, b) => a.date.localeCompare(b.date));
   const active = past.filter(task => !task.completed || retainedCompleted.has(task.id));
-  const completed = past.filter(task => task.completed && !retainedCompleted.has(task.id));
   carryHost.hidden = past.length === 0;
   if (!past.length) return;
   const heading = element('h3');
@@ -336,23 +334,6 @@ function renderCarryover() {
   const list = element('ul', 'tasks carry-tasks');
   active.forEach(task => list.append(taskRow(task, true)));
   body.append(list);
-  if (past.some(task => task.completed)) {
-    const show = button('completed-toggle', completedOpen ? 'Tamamlananları gizle' : 'Tamamlananları göster');
-    show.setAttribute('aria-expanded', String(completedOpen));
-    show.setAttribute('aria-controls', 'completed-tasks');
-    show.addEventListener('click', () => {
-      if (editor?.kind === 'edit' && !finishEditor()) return;
-      completedOpen = !completedOpen;
-      renderCarryover();
-      carryHost.querySelector('.completed-toggle')?.focus({ preventScroll: true });
-      scheduleVisibility();
-    });
-    const done = element('ul', 'tasks completed-tasks');
-    done.id = 'completed-tasks';
-    done.hidden = !completedOpen;
-    completed.forEach(task => done.append(taskRow(task, true)));
-    body.append(show, done);
-  }
   carryHost.append(heading, body);
 }
 function refreshTasks() {
@@ -499,7 +480,7 @@ function navigateWeek(offset) {
   if (!finishEditor()) return;
   selectedWeek = shiftWeek(selectedWeek, offset);
   retainedCompleted.clear();
-  completedOpen = false;
+
   renderWeek();
   if (currentWeek()) {
     setDayOpen(visibleToday, true);
@@ -514,7 +495,7 @@ function goToday() {
   if (!currentWeek()) {
     selectedWeek = weekDays(parseDate(visibleToday))[0];
     retainedCompleted.clear();
-    completedOpen = false;
+
     renderWeek();
   }
   setDayOpen(visibleToday, true);
@@ -529,7 +510,7 @@ function handleLegacyLink() {
   selectedWeek = weekDays(date)[0];
   expandedDays.set(dateKey(date), true);
   retainedCompleted.clear();
-  completedOpen = false;
+
   renderWeek();
   scrollDay(dateKey(date));
   return true;

@@ -1,5 +1,5 @@
 // Increase VERSION whenever an app-shell file changes.
-const VERSION = 'v8';
+const VERSION = 'v9';
 const PREFIX = `haftalik-gorevler:${self.registration.scope}:`;
 const CACHE = `${PREFIX}${VERSION}`;
 const SHELL = [

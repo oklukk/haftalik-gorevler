@@ -154,33 +154,49 @@ test('Devredenler: tarih sırası, tek kayıt, geçici tamamlama ve geri alma', 
   ui.byClass('carry-title')[0].fire('click');
   assert.equal(ui.byClass('carry-title')[0].attributes['aria-expanded'],'false');
   ui.byClass('carry-title')[0].fire('click');
-  ui.byClass('completed-toggle')[0].fire('click');
-  assert.deepEqual(rows(ui,'completed-tasks').map(node=>node.children[0].attributes['data-task-id']),['done']);
+  assert.equal(ui.byClass('completed-toggle').length,0);
+  assert.equal(ui.byClass('completed-tasks').length,0);
+  assert.equal(saved(ui).find(t=>t.id==='done').completed,true);
   clickTask(ui,'old');
   assert.equal(saved(ui).find(t=>t.id==='old').completed,false);
-  clickTask(ui,'done','completed-tasks');
-  assert.equal(rows(ui,'carry-tasks').length,3);
-  assert.equal(rows(ui,'completed-tasks').length,0);
   clickTask(ui,'old');
+  assert.equal(saved(ui).find(t=>t.id==='old').completed,true);
   const reopened=boot(ui.values);
-  assert.deepEqual(rows(reopened,'carry-tasks').map(node=>node.children[0].attributes['data-task-id']),['done','same-week']);
+  assert.deepEqual(rows(reopened,'carry-tasks').map(node=>node.children[0].attributes['data-task-id']),['same-week']);
   assert.equal(saved(ui).length,6);
   assert.equal(saved(ui).find(t=>t.id==='old').date,'2026-10-30');
   assert.equal(new Set(saved(ui).map(t=>t.id)).size,6);
-  // Completing from the original date also updates the same record/view.
-  ui.byClass('tasks')[0].querySelector('[data-task-id="same-week"]').fire('click');
+  // Completing from the original day also updates the same record/view.
+  ui.byClass('daily-tasks')[0].querySelector('[data-task-id="same-week"]').fire('click');
   assert(!rows(ui,'carry-tasks').some(node=>node.children[0].attributes['data-task-id']==='same-week'));
+  // Historical completed tasks are still accessible on their original date.
+  ui.byClass('previous-week')[0].fire('click'); ui.flush();
+  const done=ui.byClass('daily-tasks')[2].querySelector('[data-task-id="done"]');
+  assert(done);
+  assert.equal(done.attributes['aria-pressed'],'true');
+  done.fire('click');
+  assert.equal(saved(ui).find(t=>t.id==='done').completed,false);
+  ui.byClass('next-week')[0].fire('click'); ui.flush();
+  assert(rows(ui,'carry-tasks').some(node=>node.children[0].attributes['data-task-id']==='done'));
 });
 
-test('Yalnız tamamlanmış geçmiş görevler varsa geri alma kontrolü kalır', () => {
+test('Yalnız tamamlanmış geçmiş görevler varsa kayıt kendi gününde kalır', () => {
   const ui=boot(stored([task('done','2026-11-01',true)]));
   assert.equal(ui.byClass('carryover')[0].hidden,false);
   assert.equal(rows(ui,'carry-tasks').length,0);
-  assert.equal(ui.byClass('completed-tasks')[0].hidden,true);
-  ui.byClass('completed-toggle')[0].fire('click');
-  clickTask(ui,'done','completed-tasks');
-  assert.equal(rows(ui,'carry-tasks').length,1);
+  assert.equal(ui.byClass('completed-tasks').length,0);
+  assert.equal(ui.byClass('completed-toggle').length,0);
+  assert.equal(saved(ui)[0].completed,true);
+  ui.byClass('previous-week')[0].fire('click'); ui.flush();
+  ui.byClass('previous-week')[0].fire('click'); ui.flush();
+  const done=ui.byClass('daily-tasks')[6].querySelector('[data-task-id="done"]');
+  assert(done);
+  assert.equal(done.attributes['aria-pressed'],'true');
+  done.fire('click');
   assert.equal(saved(ui)[0].completed,false);
+  ui.byClass('next-week')[0].fire('click'); ui.flush();
+  ui.byClass('next-week')[0].fire('click'); ui.flush();
+  assert.deepEqual(rows(ui,'carry-tasks').map(node=>node.children[0].attributes['data-task-id']),['done']);
 });
 
 test('Eski gün bağlantısı ilgili haftayı açar; hatalı bağlantı uygulamayı bozmaz', () => {

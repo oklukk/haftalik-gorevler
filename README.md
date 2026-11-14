@@ -39,7 +39,7 @@ Android’de aynı HTTPS adresini Chrome ile açın. Menüde **Ana ekrana ekle**
 - Görevler `{ id, date, text, completed }` alanlarıyla `localStorage` içinde tutulur. Depolama anahtarı uygulamanın alt dizinini içerir.
 - Üstteki oklar pazartesi–pazar haftaları arasında gezinir; geçmiş ve gelecek tarihlere görev eklenebilir. Haftalar değişince kayıtlar silinmez. Sabit başlığın altında seçilen tarih aralığı gösterilir.
 - Açılışta bugün görünür. “Bugüne Dön”, başka bir hafta seçiliyken veya bugün ekranda görünmüyorken gösterilir; bugünün bölümü kapalıysa açar. Görev işlemleri ve günleri açıp kapatma bugüne otomatik kaydırmaz.
-- Bugünün altında “Devreden Görevler”, tüm geçmiş tarihlerdeki tamamlanmamış görevleri eski tarihten yeniye gösterir. Görevler kopyalanmaz veya bugüne taşınmaz; aynı kayıt güncellenir. Bu görünümden yeni tamamlananlar, geri alınabilmeleri için görünümden ayrılana veya uygulama yeniden açılana kadar kalır. Sayaç yalnızca tamamlanmamış görevleri sayar. “Tamamlananları göster” geçmişte tamamlanan görevleri asıl tarihleriyle açar ve geri almayı sağlar; geçici olarak gösterilen görevler burada tekrarlanmaz.
+- Bugünün altında “Devreden Görevler”, tüm geçmiş tarihlerdeki tamamlanmamış görevleri eski tarihten yeniye gösterir. Görevler kopyalanmaz veya bugüne taşınmaz; aynı kayıt güncellenir. Bu görünümden yeni tamamlananlar, geri alınabilmeleri için görünümden ayrılana veya uygulama yeniden açılana kadar kalır. Sayaç yalnızca tamamlanmamış görevleri sayar. Geçmişte tamamlanan görevler kendi tarihlerindeki günlük listelerde kalır; ayrı bir toplu tamamlananlar bölümü gösterilmez.
 - Ayrı cihazlar ve tarayıcı profilleri bağımsızdır. Aynı cihaz/tarayıcı/uygulama adresini kullananlar aynı yerel veriyi görür. Senkronizasyon yoktur.
 - Tarayıcı/site verilerini silmek görevleri de siler. Safari ve ana ekrana eklenen uygulamada depolama davranışı iOS sürümüne göre farklılaşabilir; düzenli kullanım ve testi ana ekran uygulamasında yapın. Gizli gezinmeyi kalıcı saklama için kullanmayın.
 - Service worker yalnızca uygulama dosyalarını önbelleğe alır; görevleri sunucuya göndermez. Sonraki bir sürümde dosyaları değiştirirken `sw.js` içindeki `VERSION` değerini artırın. Yeni önbellek hazır olduktan sonra tüm uygulama sekme/pencerelerini kapatıp açınca güncelleme devreye girer.
@@ -64,7 +64,7 @@ Görev satırının ana alanına dokunmak tamamlamayı değiştirir. Sağdaki ü
 - **Tarihini Değiştir:** Yerel tarih seçicisiyle yalnız tarihi değiştirir; görevi kopyalamaz. Sayaçlar, devredenler ve bugünün ilerlemesi yeniden hesaplanır. İptal veya geçersiz tarih hiçbir kaydı değiştirmez.
 - **Görevi Sil:** “Görev silinsin mi?” onayından sonra yalnız seçilen kayıt silinir. Vazgeç işlemi iptal eder; kaydetme başarısızsa görev korunur. Silinen kayıt yedeklere dahil edilmez.
 
-Bu işlemler çevrimdışı da çalışır. Menü dışına dokunma ve Escape menüyü kapatır. İşlemler mevcut `localStorage` anahtarını ve `{ id, date, text, completed }` modelini kullanır. Uygulama sürümü 1.4.1, önbellek sürümü v8'dır; depolama ve yedek biçim sürümleri değişmemiştir.
+Bu işlemler çevrimdışı da çalışır. Menü dışına dokunma ve Escape menüyü kapatır. İşlemler mevcut `localStorage` anahtarını ve `{ id, date, text, completed }` modelini kullanır. Uygulama sürümü 1.4.2, önbellek sürümü v9'dur; depolama ve yedek biçim sürümleri değişmemiştir.
 
 ## Ayarlar, yedekleme ve güncelleme
 
