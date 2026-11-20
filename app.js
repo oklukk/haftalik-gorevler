@@ -1,5 +1,6 @@
 import { dailyOrder, moveInGroup } from './task-order.js';
 import { setupTaskDrag } from './drag-order.js';
+import { setupBulletList } from './bullet-list.js';
 import { icon } from './icons.js';
 import { setupSettings } from './settings.js';
 import { dateKey, parseDate, weekDays, shortDate, fullDate, weekLabel, shiftWeek, weekTitle } from './dates.js';
@@ -133,6 +134,9 @@ function bindTaskForm(form, input, cancel, save, finish, restoreFocus) {
     input.style.height = 'auto';
     input.style.height = `${input.scrollHeight}px`;
   };
+  const list = button('edit-list', '• Liste');
+  cancel.parentElement.prepend(list);
+  setupBulletList(input, list, resize);
   const leave = () => {
     if (editor?.input !== input || form.contains(document.activeElement) || holdEditor || settings?.isOpen()) return;
     if (input.composing) { pendingComposition = true; return; }

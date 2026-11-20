@@ -89,16 +89,17 @@ test('Service worker: alt dizin, ilk önbellek, çevrimdışı açılış ve gü
   vm.runInNewContext(fs.readFileSync(new URL('../sw.js',import.meta.url),'utf8'), {
     URL, Request,
     self: { registration:{scope}, clients:{ async claim() {} }, addEventListener:(name,fn) => { handlers[name]=fn; } },
-    caches:{ async open(){ return cache; }, async keys(){ return [`${prefix}v10`,`${prefix}v11`,'another-app']; }, async delete(key){deleted.push(key);} },
+    caches:{ async open(){ return cache; }, async keys(){ return [`${prefix}v11`,`${prefix}v12`,'another-app']; }, async delete(key){deleted.push(key);} },
     fetch:async () => {throw new Error('Çevrimdışı');}
   });
   let pending;
   handlers.install({waitUntil:promise=>{pending=promise;}});
   await pending;
   assert(entries.has(`${scope}app.js`));
+  assert(entries.has(`${scope}bullet-list.js`));
   handlers.activate({waitUntil:promise=>{pending=promise;}});
   await pending;
-  assert.deepEqual(deleted,[`${prefix}v10`]);
+  assert.deepEqual(deleted,[`${prefix}v11`]);
   for (const [path,mode,expected] of [['','navigate','./'],['app.js','cors','./app.js'],['?acilis=1','navigate','./index.html']]) {
     handlers.fetch({ request:{url:scope+path,method:'GET',mode}, respondWith:promise=>{pending=promise;} });
     assert.equal((await pending).file, expected);

@@ -8,12 +8,16 @@ import * as dates from '../dates.js';
 import * as storage from '../storage.js';
 import * as icons from '../icons.js';
 import * as ordering from '../task-order.js';
+import { setupBulletList } from '../bullet-list.js';
 
 class Node {
-  constructor(tag, document) { this.tagName=tag; this.document=document; this.children=[]; this.handlers={}; this.attributes={}; this.hidden=false; this.value=''; this.ownText=''; this.style={}; }
+  constructor(tag, document) { this.tagName=tag; this.document=document; this.children=[]; this.handlers={}; this.attributes={}; this.hidden=false; this.selectionStart=0; this.selectionEnd=0; this.onbeforeinput=null; this.value=''; this.ownText=''; this.style={}; }
   set textContent(value) { this.ownText=value; this.children=[]; }
   get textContent() { return this.ownText + this.children.map(child=>child.textContent).join(''); }
   append(...nodes) { for (const node of nodes) { node.parent=this; this.children.push(node); } }
+  prepend(node) { node.parent=this; this.children.unshift(node); }
+  setSelectionRange(start,end) { this.selectionStart=start; this.selectionEnd=end; }
+  setRangeText(text,start,end) { this.value=this.value.slice(0,start)+text+this.value.slice(end); }
   replaceChildren(...nodes) { this.children=[]; this.append(...nodes); }
   remove() { if(this.parent) this.parent.children=this.parent.children.filter(child=>child!==this); }
   setAttribute(name,value) { this.attributes[name]=value; if(name==='class')this.className=value; }
@@ -60,7 +64,7 @@ function boot(values=new Map(), hash='') {
   const frames=[], timers=[];
   // Imported functions run outside the VM: supply the same fixed clock to
   // their default arguments, rather than depending on the machine's date.
-  const sandbox={setupTaskDrag:()=>({cancel(){}}),setupSettings:()=>({isOpen:()=>false}),...dates,weekDays:(date=new Clock())=>dates.weekDays(date),weekTitle:(date,today=new Clock())=>dates.weekTitle(date,today),...storage,...icons,...ordering,document,setTimeout:fn=>timers.push(fn),location,history,localStorage,URL,crypto,Date:Clock,Intl,CSS:{escape:value=>value},navigator:{},requestAnimationFrame:fn=>frames.push(fn),setInterval(fn){listeners.tick=fn;},window:{scrollY:80,innerHeight:844,scrollTo(value){this.scrollY=value.top;document.scrollCalls=(document.scrollCalls??0)+1;},addEventListener(name,fn){listeners[name]=fn;}}};
+  const sandbox={setupBulletList,setupTaskDrag:()=>({cancel(){}}),setupSettings:()=>({isOpen:()=>false}),...dates,weekDays:(date=new Clock())=>dates.weekDays(date),weekTitle:(date,today=new Clock())=>dates.weekTitle(date,today),...storage,...icons,...ordering,document,setTimeout:fn=>timers.push(fn),location,history,localStorage,URL,crypto,Date:Clock,Intl,CSS:{escape:value=>value},navigator:{},requestAnimationFrame:fn=>frames.push(fn),setInterval(fn){listeners.tick=fn;},window:{scrollY:80,innerHeight:844,scrollTo(value){this.scrollY=value.top;document.scrollCalls=(document.scrollCalls??0)+1;},addEventListener(name,fn){listeners[name]=fn;}}};
   const source=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8')
     .replace(/^import .*;\n/gm,'')
     .replace('import.meta.url',JSON.stringify('https://example.test/haftalik/app.js'));
@@ -306,6 +310,21 @@ test('IME, Escape ve odak kaybı mevcut yerinde yazma davranışını korur', ()
   ui.app.focus();ui.flush();
   assert.equal(saved(ui).length,1);
   assert.equal(saved(ui)[0].text,'Odak kaybında kaydet');
+});
+
+test('Ortak formdaki Liste düğmesi kaydetmez; iki formda da aynı kayıt/iptal korumasını kullanır', () => {
+  const ui=boot();ui.byClass('add')[3].fire('click');
+  const input=ui.byClass('editor')[0].children[1];
+  ui.byClass('edit-list')[0].fire('click');ui.flush();
+  assert.equal(input.value,'• ');assert.equal(ui.values.size,0);
+  input.value='• Süt';input.setSelectionRange(5,5);
+  input.fire('beforeinput',{inputType:'insertLineBreak',cancelable:true});
+  assert.equal(input.value,'• Süt\n• ');assert.equal(ui.values.size,0);
+  input.value+='Ekmek';ui.byClass('edit-save')[0].fire('click');
+  const original=saved(ui)[0];assert.equal(original.text,'• Süt\n• Ekmek');
+  editTask(ui,original.id,original.text);ui.byClass('edit-list')[0].fire('click');ui.flush();
+  assert.deepEqual(saved(ui)[0],original);
+  ui.byClass('edit-cancel')[0].fire('click');assert.deepEqual(saved(ui)[0],original);
 });
 
 test('Gün sayaçları asıl tarihe göre anında güncellenir, devredenler bugüne eklenmez', () => {

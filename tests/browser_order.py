@@ -18,7 +18,7 @@ def check_order(browser, url):
     page.clock.install(time=datetime(2026,11,12,12,tzinfo=ZoneInfo('Europe/Istanbul')))
     errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
     seed=[dict(id=id,date='2026-11-12',text=f'Görev {id}',completed=id in ['B','D']) for id in ['A','B','C','D','E']]
-    seed[0]['text']='Çok satırlı görev A\nSüt\nEkmek'
+    seed[0]['text']='Çok satırlı görev A\n• Süt\n• Ekmek'
     seed += [dict(id='past',date='2026-11-09',text='Devreden görev',completed=False),dict(id='friday',date='2026-11-13',text='Başka gün',completed=False)]
     page.add_init_script(f'if(!localStorage.getItem({json.dumps(KEY)}))localStorage.setItem({json.dumps(KEY)},{json.dumps(json.dumps(seed))});')
     page.goto(url);page.evaluate('navigator.serviceWorker.ready');page.wait_for_function('navigator.serviceWorker.controller !== null')
