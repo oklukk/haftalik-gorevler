@@ -84,6 +84,8 @@ h2 { margin: 0; font-size: var(--font-day); line-height: 1.4; font-weight: 600; 
 .task-edit { width: 100%; min-width: 0; margin: 4px 0; padding: 0 10px; border: 1px solid #b7c9ac; border-radius: var(--radius); background: #fafcf7; }
 .edit-actions { display: flex; justify-content: flex-end; gap: 6px; border-top: 1px solid var(--line); }
 .edit-actions button, .dialog-actions button { min-width: 72px; min-height: 44px; padding: 8px 12px; border: 0; border-radius: 9px; background: transparent; font-size: var(--font-control); }
+.edit-actions .edit-list { margin-right: auto; padding-inline: 10px; }
+.edit-list[aria-pressed="true"] { color: #3f653b; background: #edf3e7; }
 .edit-save, .task-date-save { color: #3f653b; font-weight: 600; }
 .edit-error { margin: 0; color: var(--danger); font-size: var(--font-small); line-height: 1.5; }
 .edit-error:empty { display: none; }

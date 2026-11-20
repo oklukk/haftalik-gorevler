@@ -14,13 +14,13 @@ import tarfile
 from playwright.sync_api import sync_playwright, expect
 from browser_smoke import ROOT, QuietHandler
 
-BASELINE = '8a3ccda468c1022ce9ba7cac4585816050264173'
+BASELINE = 'd4d262a31caf69faf9964f42048a27b646ea8379'
 SEED = [dict(id=id,date='2026-11-12',text=f'Görev {id}',completed=id in ['B','D']) for id in ['A','B','C','D','E']]
 SEED += [dict(id='past',date='2026-11-09',text='Devreden görev',completed=False)]
 
 
-def load(browser,url,width=390):
-    context=browser.new_context(viewport={'width':width,'height':844},is_mobile=True,has_touch=True,locale='tr-TR',timezone_id='Europe/Istanbul')
+def load(browser,url,width=390,mobile=True):
+    context=browser.new_context(viewport={'width':width,'height':844},is_mobile=mobile,has_touch=mobile,locale='tr-TR',timezone_id='Europe/Istanbul')
     page=context.new_page();page.set_default_timeout(10000)
     page.clock.install(time=datetime(2026,11,12,12,tzinfo=ZoneInfo('Europe/Istanbul')))
     page.add_init_script('if(!localStorage.getItem("haftalik-gorevler:v1:"+location.pathname))localStorage.setItem("haftalik-gorevler:v1:"+location.pathname,'+json.dumps(json.dumps(SEED))+');')
