@@ -313,8 +313,8 @@ function renderCarryover() {
   const past = tasks.filter(task => task.date < visibleToday && parseDate(task.date))
     .sort((a, b) => a.date.localeCompare(b.date));
   const active = past.filter(task => !task.completed || retainedCompleted.has(task.id));
-  carryHost.hidden = past.length === 0;
-  if (!past.length) return;
+  carryHost.hidden = active.length === 0;
+  if (!active.length) return;
   const heading = element('h3');
   const toggle = button('carry-title');
   toggle.append(icon('history', document), element('span', '', `Devreden Görevler (${past.filter(task => !task.completed).length})`));
