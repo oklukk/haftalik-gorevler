@@ -18,6 +18,7 @@ class Node {
   remove() { if(this.parent) this.parent.children=this.parent.children.filter(child=>child!==this); }
   setAttribute(name,value) { this.attributes[name]=value; if(name==='class')this.className=value; }
   get parentElement() { return this.parent; }
+  contains(node) { return node === this || this.children.some(child=>child.contains(node)); }
   showModal() { this.open=true; }
   close() { this.open=false; this.fire('close'); }
   querySelector(selector) {
@@ -29,11 +30,15 @@ class Node {
   scrollIntoView() { this.document.scrolledTo=this.id; }
 
   addEventListener(name,fn) { (this.handlers[name]??=[]).push(fn); }
-  fire(name,extra={}) { for (const fn of this.handlers[name]??[]) fn({preventDefault(){},...extra}); }
+  fire(name,extra={}) {
+    const event={preventDefault(){},...extra};
+    for (const fn of this.handlers[name]??[]) fn(event);
+    if (['keydown','focusout'].includes(name)) this.parent?.fire(name,event);
+  }
   focus() {
     const old=this.document.activeElement;
     this.document.activeElement=this;
-    if(old && old!==this) old.fire('blur');
+    if(old && old!==this) { old.fire('blur'); old.fire('focusout',{relatedTarget:this}); }
   }
 }
 
@@ -52,16 +57,18 @@ function boot(values=new Map(), hash='') {
   const localStorage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
   let now=new Date(2026,10,12,12);
   class Clock extends Date { constructor(...args) { super(...(args.length ? args : [now])); } }
-  const frames=[];
-  const sandbox={setupTaskDrag:()=>({cancel(){}}),setupSettings:()=>({isOpen:()=>false}),...dates,...storage,...icons,...ordering,document,setTimeout(){},location,history,localStorage,URL,crypto,Date:Clock,Intl,CSS:{escape:value=>value},navigator:{},requestAnimationFrame:fn=>frames.push(fn),setInterval(fn){listeners.tick=fn;},window:{scrollY:80,innerHeight:844,scrollTo(value){this.scrollY=value.top;document.scrollCalls=(document.scrollCalls??0)+1;},addEventListener(name,fn){listeners[name]=fn;}}};
+  const frames=[], timers=[];
+  // Imported functions run outside the VM: supply the same fixed clock to
+  // their default arguments, rather than depending on the machine's date.
+  const sandbox={setupTaskDrag:()=>({cancel(){}}),setupSettings:()=>({isOpen:()=>false}),...dates,weekDays:(date=new Clock())=>dates.weekDays(date),weekTitle:(date,today=new Clock())=>dates.weekTitle(date,today),...storage,...icons,...ordering,document,setTimeout:fn=>timers.push(fn),location,history,localStorage,URL,crypto,Date:Clock,Intl,CSS:{escape:value=>value},navigator:{},requestAnimationFrame:fn=>frames.push(fn),setInterval(fn){listeners.tick=fn;},window:{scrollY:80,innerHeight:844,scrollTo(value){this.scrollY=value.top;document.scrollCalls=(document.scrollCalls??0)+1;},addEventListener(name,fn){listeners[name]=fn;}}};
   const source=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8')
     .replace(/^import .*;\n/gm,'')
     .replace('import.meta.url',JSON.stringify('https://example.test/haftalik/app.js'));
   vm.runInNewContext(source,sandbox);
   const all=(predicate,node=document.body)=>[...(predicate(node)?[node]:[]),...node.children.flatMap(child=>all(predicate,child))];
   const byClass=name=>all(node=>node.className?.split(' ').includes(name));
-  const add=(button,text)=>{button.fire('click'); const input=byClass('editor')[0].children[1]; assert.equal(document.activeElement,input); input.value=text; input.parent.fire('submit');};
-  const flush=()=>{while(frames.length)frames.shift()();};
+  const add=(button,text)=>{button.fire('click'); const input=byClass('editor')[0].children[1]; assert.equal(document.activeElement,input); input.value=text; byClass('edit-save')[0].fire('click');};
+  const flush=()=>{while(timers.length)timers.shift()();while(frames.length)frames.shift()();};
   flush();
   return {app,notice,location,history,values,byClass,add,document,listeners,flush,setNow(value){now=new Date(value);listeners.tick();flush();}};
 }
@@ -296,7 +303,7 @@ test('IME, Escape ve odak kaybı mevcut yerinde yazma davranışını korur', ()
   assert.equal(ui.values.size,0);
   ui.byClass('add')[3].fire('click');
   input=ui.byClass('editor')[0].children[1];input.value='Odak kaybında kaydet';
-  input.fire('blur');
+  ui.app.focus();ui.flush();
   assert.equal(saved(ui).length,1);
   assert.equal(saved(ui)[0].text,'Odak kaybında kaydet');
 });
@@ -312,6 +319,73 @@ test('Gün sayaçları asıl tarihe göre anında güncellenir, devredenler bug�
   ui.add(ui.byClass('add')[3],'Yeni');
   assert.equal(ui.byClass('day-count')[3].textContent,'0/2 tamamlandı');
   assert.equal(ui.byClass('day-count')[4].textContent,'Görev yok');
+});
+
+test('Çok satırlı yeni görev: Enter/submit kaydetmez, Kaydet tek kayıt oluşturur', () => {
+  const ui=boot();
+  ui.byClass('add')[3].fire('click');
+  const form=ui.byClass('editor')[0], input=form.children[1];
+  assert.equal(input.tagName,'textarea');
+  input.value='Alışveriş yapılacak\nSüt\nEkmek\nYumurta';
+  input.fire('keydown',{key:'Enter'});form.fire('submit');ui.flush();
+  assert.equal(ui.values.size,0);
+  const save=ui.byClass('edit-save')[0];
+  save.focus();ui.flush();assert.equal(ui.values.size,0);
+  save.fire('click');save.fire('click');ui.flush();
+  assert.equal(saved(ui).length,1);
+  assert.equal(saved(ui)[0].text,input.value);
+  assert.equal(boot(ui.values).byClass('task-text')[0].textContent,input.value);
+});
+
+test('Form içindeki İptal odağı veya Safari pointer odağı taslağı kaydetmez', () => {
+  for (const pointer of [false,true]) {
+    const ui=boot();ui.byClass('add')[3].fire('click');
+    const form=ui.byClass('editor')[0], input=form.children[1];
+    input.value='Kaydedilmeyecek\ntaslak';
+    const cancel=ui.byClass('edit-cancel')[0];
+    if (pointer) {
+      form.fire('pointerdown');
+      ui.document.activeElement=ui.document.body;
+      input.fire('focusout',{relatedTarget:null});
+    } else cancel.focus();
+    ui.flush();assert.equal(ui.values.size,0);
+    cancel.fire('click');ui.flush();
+    assert.equal(ui.values.size,0);assert.equal(ui.byClass('editor').length,0);
+  }
+});
+
+test('Yeni görev ve düzenleme yalnız form dışına çıkınca otomatik kaydedilir', () => {
+  const ui=boot();ui.byClass('add')[3].fire('click');
+  ui.byClass('editor')[0].children[1].value='Bir\nİki';
+  ui.app.focus();ui.flush();
+  const original=saved(ui)[0];
+  editTask(ui,original.id);
+  const input=ui.byClass('task-edit')[0].children[0];
+  assert.equal(input.tagName,'textarea');
+  input.value='Yeni\nmetin';input.fire('keydown',{key:'Enter'});
+  input.parent.fire('submit');ui.byClass('edit-cancel')[0].focus();ui.flush();
+  assert.equal(saved(ui)[0].text,original.text);
+  ui.app.focus();ui.flush();
+  assert.deepEqual(saved(ui)[0],{...original,text:'Yeni\nmetin'});
+  assert.equal(ui.document.activeElement,ui.app);
+});
+
+test('Otomatik kayıt hatası taslağı korur; İptal eski veriyi korur; IME bitişi güvenlidir', () => {
+  const values=stored([task('today','2026-11-12')]), ui=boot(values);
+  editTask(ui,'today');
+  let input=ui.byClass('task-edit')[0].children[0];input.value='Değişiklik\ntaslağı';
+  const set=values.set.bind(values);values.set=()=>{throw new Error('QuotaExceededError');};
+  ui.app.focus();ui.flush();
+  assert.equal(ui.document.activeElement,input);
+  assert.equal(input.value,'Değişiklik\ntaslağı');assert.equal(saved(ui)[0].text,'today');
+  ui.byClass('edit-cancel')[0].focus();ui.flush();ui.byClass('edit-cancel')[0].fire('click');
+  assert.equal(saved(ui)[0].text,'today');
+  values.set=set;
+  ui.byClass('add')[3].fire('click');input=ui.byClass('editor')[0].children[1];
+  input.value='IME\nmetni';input.fire('compositionstart');ui.app.focus();ui.flush();
+  assert.equal(saved(ui).length,1);
+  input.fire('compositionend');ui.flush();
+  assert.equal(saved(ui).length,2);assert.equal(saved(ui)[1].text,'IME\nmetni');
 });
 
 function openMenu(ui,id,within='tasks') {

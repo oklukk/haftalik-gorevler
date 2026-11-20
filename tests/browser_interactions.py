@@ -14,7 +14,7 @@ import tarfile
 from playwright.sync_api import sync_playwright, expect
 from browser_smoke import ROOT, QuietHandler
 
-BASELINE = '9558a078a6b146d83d3284311ec19c2e720677fa'
+BASELINE = '8a3ccda468c1022ce9ba7cac4585816050264173'
 SEED = [dict(id=id,date='2026-11-12',text=f'Görev {id}',completed=id in ['B','D']) for id in ['A','B','C','D','E']]
 SEED += [dict(id='past',date='2026-11-09',text='Devreden görev',completed=False)]
 
@@ -117,9 +117,9 @@ def interactions(browser,url):
     page.keyboard.press('Tab')
     assert page.evaluate('document.activeElement.matches(":focus-visible") && getComputedStyle(document.activeElement).outlineStyle !== "none"')
     page.locator('.today .add').tap()
-    value=page.locator('.editor input').evaluate('(n)=>({outline:getComputedStyle(n).outlineStyle,shadow:getComputedStyle(n).boxShadow,font:getComputedStyle(n).fontSize})')
+    value=page.locator('.editor textarea').evaluate('(n)=>({outline:getComputedStyle(n).outlineStyle,shadow:getComputedStyle(n).boxShadow,font:getComputedStyle(n).fontSize})')
     assert value=={'outline':'none','shadow':'none','font':'16px'},value
-    page.locator('.editor input').fill('Yeni taslak');page.locator('.editor input').press('Enter')
+    page.locator('.editor textarea').fill('Yeni taslak');page.locator('.editor .edit-save').click()
     assert page.locator('.today .add').evaluate('(n)=>getComputedStyle(n).outlineStyle')=='none'
     # Moving preview: source follows the pointer; peers fill space, not a line.
     align();source=point(control('E'));target=point(control('A'));target['y']-=12

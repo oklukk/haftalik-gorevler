@@ -18,6 +18,7 @@ def check_order(browser, url):
     page.clock.install(time=datetime(2026,11,12,12,tzinfo=ZoneInfo('Europe/Istanbul')))
     errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
     seed=[dict(id=id,date='2026-11-12',text=f'Görev {id}',completed=id in ['B','D']) for id in ['A','B','C','D','E']]
+    seed[0]['text']='Çok satırlı görev A\nSüt\nEkmek'
     seed += [dict(id='past',date='2026-11-09',text='Devreden görev',completed=False),dict(id='friday',date='2026-11-13',text='Başka gün',completed=False)]
     page.add_init_script(f'if(!localStorage.getItem({json.dumps(KEY)}))localStorage.setItem({json.dumps(KEY)},{json.dumps(json.dumps(seed))});')
     page.goto(url);page.evaluate('navigator.serviceWorker.ready');page.wait_for_function('navigator.serviceWorker.controller !== null')
@@ -101,15 +102,16 @@ def check_order(browser, url):
     for width in [320,375,390,412]:
         page.set_viewport_size({'width':width,'height':844})
         page.locator('.today .add').tap()
-        size=page.locator('.editor').evaluate('(n)=>({h:n.getBoundingClientRect().height,font:getComputedStyle(n.querySelector("input")).fontSize})')
-        assert size=={'h':44,'font':'16px'},size
+        size=page.locator('.editor textarea').evaluate('(n)=>({h:n.getBoundingClientRect().height,font:getComputedStyle(n).fontSize})')
+        assert 42<=size['h']<=44 and size['font']=='16px',size
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
         if width==390:page.locator('.today').screenshot(path='/tmp/haftalik-order-add-input.png')
-        page.locator('.editor input').press('Escape')
+        page.locator('.editor textarea').press('Escape')
         task('A').locator('..').locator('.task-more').tap();page.locator('.task-edit-action').tap()
-        edit=page.locator('.task-edit input')
+        edit=page.locator('.task-edit textarea')
         size=edit.evaluate('(n)=>({h:n.getBoundingClientRect().height,font:getComputedStyle(n).fontSize})')
-        assert 42<=size['h']<=46 and size['font']=='16px',size
+        expected_height=42+22*next(t['text'].count('\n') for t in stored() if t['id']=='A')
+        assert size=={'h':expected_height,'font':'16px'},size
         assert page.locator('.edit-save').evaluate('(n)=>n.getBoundingClientRect().height')>=44
         edit.fill('Korunan düzenleme taslağı')
         client.send('Input.dispatchTouchEvent',{'type':'touchStart','touchPoints':[point(edit)]});page.wait_for_timeout(450)
@@ -118,8 +120,12 @@ def check_order(browser, url):
         if width==390:
             start(task('C'),hold=False);page.wait_for_timeout(450)
             expect(page.locator('.is-dragging')).to_have_count(0);end()
-            expect(edit).to_have_value('Korunan düzenleme taslağı')
-            assert stored()==before
+            # Leaving the whole edit form now autosaves; the held row must
+            # neither drag nor toggle while that draft is being completed.
+            expect(edit).to_have_count(0)
+            assert stored()==[{**t, 'text':'Korunan düzenleme taslağı'} if t['id']=='A' else t for t in before]
+            before=stored()
+            task('A').locator('..').locator('.task-more').tap();page.locator('.task-edit-action').tap()
         if width==390:page.locator('.task-edit').screenshot(path='/tmp/haftalik-order-edit-input.png')
         page.locator('.edit-cancel').tap()
     # Keyboard alternative stays invisible in the normal UI and persists as well.
