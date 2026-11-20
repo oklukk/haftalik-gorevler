@@ -312,6 +312,20 @@ function editTask(ui,id,text,within='tasks') {
   const input=ui.byClass('task-edit')[0].children[0];input.value=text;return input;
 }
 
+test('Görev düzenlemede Enter kaydetmez; çok satırlı metin Kaydet ile saklanır', () => {
+  const ui=boot(stored([task('today','2026-11-12')]));
+  const input=editTask(ui,'today','İlk satır\nİkinci satır');
+  assert.equal(input.tagName,'textarea');
+  input.fire('keydown',{key:'Enter'});
+  assert.equal(saved(ui)[0].text,'today');
+  assert.equal(ui.byClass('task-edit').length,1);
+  ui.byClass('edit-save')[0].fire('click');
+  assert.equal(saved(ui)[0].text,'İlk satır\nİkinci satır');
+  editTask(ui,'today','İptal edilecek\nmetin');
+  ui.byClass('edit-cancel')[0].fire('click');
+  assert.equal(saved(ui)[0].text,'İlk satır\nİkinci satır');
+});
+
 test('Üç nokta tamamlamaz; yerinde düzenleme kimlik, tarih ve tamamlanmayı korur',()=>{
   const ui=boot(stored([task('today','2026-11-12',true),task('other','2026-11-13')]));
   openMenu(ui,'today');assert.equal(saved(ui)[0].completed,true);

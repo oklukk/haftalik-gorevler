@@ -122,6 +122,9 @@ def check_order(browser, url):
             expect(edit).to_have_value('Korunan düzenleme taslağı')
             assert stored()==before
         if width==390:page.locator('.task-edit').screenshot(path='/tmp/haftalik-order-edit-input.png')
+        edit.press('Enter')
+        assert edit.input_value()=='Korunan düzenleme taslağı\n'
+        assert stored()==before
         page.locator('.edit-cancel').tap()
     # Keyboard alternative stays invisible in the normal UI and persists as well.
     task('C').focus();page.keyboard.press('Alt+ArrowUp')
