@@ -101,14 +101,13 @@ def check_order(browser, url):
     for width in [320,375,390,412]:
         page.set_viewport_size({'width':width,'height':844})
         page.locator('.today .add').tap()
-        size=page.locator('.editor').evaluate('(n)=>({h:n.getBoundingClientRect().height,field:n.querySelector("textarea").getBoundingClientRect().height,font:getComputedStyle(n.querySelector("textarea")).fontSize})')
-        assert size['h']>=85 and 42<=size['field']<=46 and size['font']=='16px',size
-        assert page.locator('.add-save').evaluate('(n)=>n.getBoundingClientRect().height')>=44
+        size=page.locator('.editor').evaluate('(n)=>({h:n.getBoundingClientRect().height,font:getComputedStyle(n.querySelector("input")).fontSize})')
+        assert size=={'h':44,'font':'16px'},size
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
         if width==390:page.locator('.today').screenshot(path='/tmp/haftalik-order-add-input.png')
-        page.locator('.editor textarea').press('Escape')
+        page.locator('.editor input').press('Escape')
         task('A').locator('..').locator('.task-more').tap();page.locator('.task-edit-action').tap()
-        edit=page.locator('.task-edit textarea')
+        edit=page.locator('.task-edit input')
         size=edit.evaluate('(n)=>({h:n.getBoundingClientRect().height,font:getComputedStyle(n).fontSize})')
         assert 42<=size['h']<=46 and size['font']=='16px',size
         assert page.locator('.edit-save').evaluate('(n)=>n.getBoundingClientRect().height')>=44
@@ -122,9 +121,6 @@ def check_order(browser, url):
             expect(edit).to_have_value('Korunan düzenleme taslağı')
             assert stored()==before
         if width==390:page.locator('.task-edit').screenshot(path='/tmp/haftalik-order-edit-input.png')
-        edit.press('Enter')
-        assert edit.input_value()=='Korunan düzenleme taslağı\n'
-        assert stored()==before
         page.locator('.edit-cancel').tap()
     # Keyboard alternative stays invisible in the normal UI and persists as well.
     task('C').focus();page.keyboard.press('Alt+ArrowUp')

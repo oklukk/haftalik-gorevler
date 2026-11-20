@@ -23,7 +23,7 @@ Bu teslim GitHub hesabınıza otomatik yükleme veya yayımlama yapmaz.
 ## iPhone’da test ve ana ekrana ekleme
 
 1. GitHub Pages HTTPS adresini **Safari** ile açın; ilk açılışta internet açık olsun.
-2. Bir güne `+ Madde ekle` ile yazın, Enter ile yeni satıra geçin ve altındaki Kaydet/İptal butonlarını deneyin. Boş bir girdi de deneyin.
+2. Bir güne `+ Madde ekle` ile yazın, klavyenin Tamam/Enter tuşuyla kaydedin. Boş bir girdi de deneyin.
 3. Gün adlarına dokunup bağımsız açılıp kapandıklarını kontrol edin. Bir görev ekleyin, tamamlayın ve geri alın. Hafta oklarını ve “Bugüne Dön” kontrolünü deneyin. Geçmiş bir tarihe eklediğiniz görevin bugünün devredenlerinde aynı tarih ile göründüğünü ve tamamlamanın geri alınabildiğini kontrol edin.
 4. Safari’de **Paylaş → Ana Ekrana Ekle → Ekle** yolunu izleyin. Seçeneği göremiyorsanız paylaşım listesini aşağı kaydırın.
 5. Ana ekran simgesinden uygulamayı internet açıkken bir kez açın; birkaç saniye bekleyin. Görev ekleyin, uygulamayı kapatıp yeniden açın ve kayıtları kontrol edin.
@@ -35,7 +35,7 @@ Android’de aynı HTTPS adresini Chrome ile açın. Menüde **Ana ekrana ekle**
 
 - Hafta cihazın yerel tarihine göre pazartesi–pazar hesaplanır. Uygulama açıkken veya yeniden öne getirildiğinde gün/hafta değişimi kontrol edilir.
 - Uygulama tek ekrandır. Gün başlıkları birbirinden bağımsız açılıp kapanır. Mevcut haftaya ilk girişte geçmiş günler kapalı, bugün ve sonraki günler açıktır. Diğer haftalar açık günlerle başlar; elle yapılan seçimler oturum boyunca korunur. Eski `#gun/YYYY-AA-GG` bağlantıları ilgili haftayı ve günü açar.
-- `+ Madde ekle` doğrudan çok satırlı bir alan açar ve odağı eşzamanlı olarak girişe taşır. Enter/Tamam yeni satır ekler. İptal/Kaydet butonları taslağı iptal eder veya kaydeder; yalnızca odak kaybı kaydetmez. Diğer uygulama işlemleri sırasında mevcut güvenli taslak kaydetme korumaları devam eder. Boş girdi kaydedilmez. Fiziksel klavyede Escape taslağı iptal eder.
+- `+ Madde ekle` doğrudan boş bir satır açar ve odağı eşzamanlı olarak girişe taşır. Enter/Tamam kaydeder. Satırdan ayrılmak da dolu taslağı kaydeder; boş girdi kaydedilmez. Fiziksel klavyede Escape taslağı iptal eder.
 - Görevler `{ id, date, text, completed }` alanlarıyla `localStorage` içinde tutulur. Depolama anahtarı uygulamanın alt dizinini içerir.
 - Üstteki oklar pazartesi–pazar haftaları arasında gezinir; geçmiş ve gelecek tarihlere görev eklenebilir. Haftalar değişince kayıtlar silinmez. Sabit başlığın altında seçilen tarih aralığı gösterilir.
 - Açılışta bugün görünür. “Bugüne Dön”, başka bir hafta seçiliyken veya bugün ekranda görünmüyorken gösterilir; bugünün bölümü kapalıysa açar. Görev işlemleri ve günleri açıp kapatma bugüne otomatik kaydırmaz.
@@ -52,7 +52,7 @@ Günlük bir görevin ana alanına yaklaşık 400 ms basılı tutup yukarı/aşa
 
 Sürükleme sırasında kayıt yapılmaz. Geçerli ve değişiklik oluşturan bırakmada tek `localStorage` yazması yapılır. Kaydetme başarısızsa önceki sıra ve görevler korunur. Manuel sıra mevcut dizinin sırasıdır; `order` veya başka veri alanı eklenmez. JSON yedeği bu sırayı aynen içerir. Boş cihaza birleştirme veya onaylı yerine yükleme yedekteki sırayı korur; dolu cihaza birleştirme mevcut yerel kayıtların sırasını koruyup yalnız yeni kayıtları ekler.
 
-Yeni görev ve görev düzenleme metin alanları başlangıçta yaklaşık 42 px yüksekliktedir; çok satırlı yazıda sınırlı biçimde büyür. İkisinin de yazısı 16 px, altlarındaki Kaydet/İptal butonlarının dokunma hedefleri en az 44 px'tir. Gerçek iPhone/Safari klavyesi ve uzun basma davranışı cihazda ayrıca denenmelidir; Chromium dokunma testleri fiziksel cihaz garantisi değildir.
+Yeni görev alanı toplam 44 px, düzenleme metin girişi yaklaşık 42 px yüksekliğindedir; ikisinin de yazısı 16 px kalır. Kaydet/İptal dokunma hedefleri en az 44 px'tir. Gerçek iPhone/Safari klavyesi ve uzun basma davranışı cihazda ayrıca denenmelidir; Chromium dokunma testleri fiziksel cihaz garantisi değildir.
 
 ## Yumuşak Modern v2 ve görev işlemleri
 
@@ -60,11 +60,11 @@ Yerel SVG ikonları, dairesel tamamlama kontrolleri ve hafif yeşil ekleme alanl
 
 Görev satırının ana alanına dokunmak tamamlamayı değiştirir. Sağdaki üç nokta ayrı bir düğmedir ve tamamlamayı tetiklemez:
 
-- **Görevi Düzenle:** Metni aynı satırda, gerekirse birkaç satır hâlinde değiştirin; Enter yeni satır açar. Kaydet ile kaydedin veya İptal/Escape ile geri dönün. Kimlik, tarih ve tamamlanma durumu korunur. Boş metin ve kaydetme hataları mevcut kaydı değiştirmez; taslak görünür kalır. Başka bir işleme geçişte taslak kaydedilir; kaydedilemiyorsa işlem durdurulur.
+- **Görevi Düzenle:** Metni aynı satırda değiştirin; Kaydet/Enter ile kaydedin veya İptal/Escape ile geri dönün. Kimlik, tarih ve tamamlanma durumu korunur. Boş metin ve kaydetme hataları mevcut kaydı değiştirmez; taslak görünür kalır. Başka bir işleme geçişte taslak kaydedilir; kaydedilemiyorsa işlem durdurulur.
 - **Tarihini Değiştir:** Yerel tarih seçicisiyle yalnız tarihi değiştirir; görevi kopyalamaz. Sayaçlar, devredenler ve bugünün ilerlemesi yeniden hesaplanır. İptal veya geçersiz tarih hiçbir kaydı değiştirmez.
 - **Görevi Sil:** “Görev silinsin mi?” onayından sonra yalnız seçilen kayıt silinir. Vazgeç işlemi iptal eder; kaydetme başarısızsa görev korunur. Silinen kayıt yedeklere dahil edilmez.
 
-Bu işlemler çevrimdışı da çalışır. Menü dışına dokunma ve Escape menüyü kapatır. İşlemler mevcut `localStorage` anahtarını ve `{ id, date, text, completed }` modelini kullanır. Uygulama sürümü 1.4.4, önbellek sürümü v11'dir; depolama ve yedek biçim sürümleri değişmemiştir.
+Bu işlemler çevrimdışı da çalışır. Menü dışına dokunma ve Escape menüyü kapatır. İşlemler mevcut `localStorage` anahtarını ve `{ id, date, text, completed }` modelini kullanır. Uygulama sürümü 1.4.2, önbellek sürümü v9'dur; depolama ve yedek biçim sürümleri değişmemiştir.
 
 ## Ayarlar, yedekleme ve güncelleme
 

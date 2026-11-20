@@ -24,9 +24,9 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; }
-button, input, textarea, select { font: inherit; }
+button, input, select { font: inherit; }
 button { cursor: pointer; color: inherit; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 button:disabled { cursor: default; opacity: .6; }
 [hidden] { display: none !important; }
 .icon { display: block; width: 20px; height: 20px; flex: 0 0 20px; }
@@ -64,7 +64,7 @@ h2 { margin: 0; font-size: var(--font-day); line-height: 1.4; font-weight: 600; 
 .task-mark .icon { width: 22px; height: 22px; }
 .task-mark .icon-check { display: none; }
 .task-content { min-width: 0; overflow-wrap: anywhere; }
-.task-text { overflow-wrap: anywhere; white-space: pre-wrap; }
+.task-text { overflow-wrap: anywhere; }
 .task[aria-pressed="true"] .task-text { color: #73816d; text-decoration: line-through; text-decoration-thickness: 1px; }
 .task[aria-pressed="true"] .task-mark { background: #66845d; color: #fff; }
 .task[aria-pressed="true"] .icon-circle { display: none; }
@@ -76,11 +76,9 @@ h2 { margin: 0; font-size: var(--font-day); line-height: 1.4; font-weight: 600; 
 .add { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 44px; margin-top: 3px; padding: 8px 10px; border: 1px solid #e3eadf; border-radius: var(--radius); background: #f5f8f2; color: #607454; text-align: left; font-size: var(--font-control); line-height: 22px; }
 .add .icon { width: 18px; height: 18px; flex-basis: 18px; }
 .add:active { background: #edf3e7; }
-.editor { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: start; column-gap: 9px; min-height: 44px; margin-top: 3px; padding: 0 9px; border: 1px solid #aabd9f; border-radius: var(--radius); background: #fafcf7; }
-.editor .task-mark { margin-top: 10px; }
-.editor textarea, .task-edit textarea { display: block; width: 100%; min-width: 0; height: 42px; min-height: 42px; max-height: 154px; padding: 8px 0; border: 0; border-radius: 0; background: transparent; color: var(--ink); font-size: 16px; line-height: 22px; resize: none; overflow-y: auto; scroll-margin-top: calc(var(--header-height, 64px) + 12px); scroll-margin-bottom: 70px; }
-.editor textarea::placeholder { color: #83927c; }
-.editor .add-actions { grid-column: 2; }
+.editor { display: flex; align-items: center; gap: 9px; min-height: 44px; margin-top: 3px; padding: 0 9px; border: 1px solid #aabd9f; border-radius: var(--radius); background: #fafcf7; }
+.editor input, .task-edit input { width: 100%; min-width: 0; min-height: 42px; padding: 8px 0; border: 0; border-radius: 0; background: transparent; color: var(--ink); font-size: 16px; line-height: 22px; scroll-margin-top: calc(var(--header-height, 64px) + 12px); scroll-margin-bottom: 70px; }
+.editor input::placeholder { color: #83927c; }
 .task-edit { width: 100%; min-width: 0; margin: 4px 0; padding: 0 10px; border: 1px solid #b7c9ac; border-radius: var(--radius); background: #fafcf7; }
 .edit-actions { display: flex; justify-content: flex-end; gap: 6px; border-top: 1px solid var(--line); }
 .edit-actions button, .dialog-actions button { min-width: 72px; min-height: 44px; padding: 8px 12px; border: 0; border-radius: 9px; background: transparent; font-size: var(--font-control); }
@@ -149,9 +147,9 @@ h3 { margin: 0; font-size: var(--font-control); font-weight: 600; }
 .editor:focus-within, .task-edit:focus-within { border-color: var(--green); box-shadow: 0 0 0 1px #50765b22; }
 /* The rounded wrapper owns the focus ring, including keyboard navigation.
    Reset native textfield chrome for pointer focus and Safari as well. */
-.editor textarea, .task-edit textarea,
-.editor textarea:focus, .task-edit textarea:focus,
-.editor textarea:focus-visible, .task-edit textarea:focus-visible {
+.editor input, .task-edit input,
+.editor input:focus, .task-edit input:focus,
+.editor input:focus-visible, .task-edit input:focus-visible {
   -webkit-appearance: none;
   appearance: none;
   outline: none;

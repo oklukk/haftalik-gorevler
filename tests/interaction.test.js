@@ -60,7 +60,7 @@ function boot(values=new Map(), hash='') {
   vm.runInNewContext(source,sandbox);
   const all=(predicate,node=document.body)=>[...(predicate(node)?[node]:[]),...node.children.flatMap(child=>all(predicate,child))];
   const byClass=name=>all(node=>node.className?.split(' ').includes(name));
-  const add=(button,text)=>{button.fire('click'); const input=byClass('editor')[0].children[1]; assert.equal(document.activeElement,input); input.value=text; byClass('add-save')[0].fire('click');};
+  const add=(button,text)=>{button.fire('click'); const input=byClass('editor')[0].children[1]; assert.equal(document.activeElement,input); input.value=text; input.parent.fire('submit');};
   const flush=()=>{while(frames.length)frames.shift()();};
   flush();
   return {app,notice,location,history,values,byClass,add,document,listeners,flush,setNow(value){now=new Date(value);listeners.tick();flush();}};
@@ -263,7 +263,7 @@ test('Başarısız tamamlama depodaki veriyi ve devreden sayacını değiştirme
   assert.equal(ui.notice.hidden,false);
 });
 
-test('IME, Escape, Enter, blur ve açık butonlar yeni görev taslağını korur', () => {
+test('IME, Escape ve odak kaybı mevcut yerinde yazma davranışını korur', () => {
   const ui=boot();
   ui.byClass('add')[3].fire('click');
   let input=ui.byClass('editor')[0].children[1];
@@ -273,21 +273,14 @@ test('IME, Escape, Enter, blur ve açık butonlar yeni görev taslağını korur
   assert.equal(ui.byClass('editor').length,1);
   assert.equal(ui.values.size,0);
   input.fire('compositionend');
-  input.fire('keydown',{key:'Enter'});
-  assert.equal(ui.byClass('editor').length,1);
-  assert.equal(ui.values.size,0);
   input.fire('keydown',{key:'Escape'});
   assert.equal(ui.byClass('editor').length,0);
   assert.equal(ui.values.size,0);
   ui.byClass('add')[3].fire('click');
-  input=ui.byClass('editor')[0].children[1];input.value='İptal edilecek';
+  input=ui.byClass('editor')[0].children[1];input.value='Odak kaybında kaydet';
   input.fire('blur');
-  assert.equal(ui.byClass('editor').length,1);
-  ui.byClass('add-cancel')[0].fire('click');
-  assert.equal(ui.values.size,0);
-  ui.add(ui.byClass('add')[3],'İlk satır\nİkinci satır');
-  assert.equal(saved(ui)[0].text,'İlk satır\nİkinci satır');
-  assert.equal(ui.byClass('task-text')[0].textContent,'İlk satır\nİkinci satır');
+  assert.equal(saved(ui).length,1);
+  assert.equal(saved(ui)[0].text,'Odak kaybında kaydet');
 });
 
 test('Gün sayaçları asıl tarihe göre anında güncellenir, devredenler bugüne eklenmez', () => {
@@ -311,20 +304,6 @@ function editTask(ui,id,text,within='tasks') {
   openMenu(ui,id,within);ui.byClass('task-edit-action')[0].fire('click');
   const input=ui.byClass('task-edit')[0].children[0];input.value=text;return input;
 }
-
-test('Görev düzenlemede Enter kaydetmez; çok satırlı metin Kaydet ile saklanır', () => {
-  const ui=boot(stored([task('today','2026-11-12')]));
-  const input=editTask(ui,'today','İlk satır\nİkinci satır');
-  assert.equal(input.tagName,'textarea');
-  input.fire('keydown',{key:'Enter'});
-  assert.equal(saved(ui)[0].text,'today');
-  assert.equal(ui.byClass('task-edit').length,1);
-  ui.byClass('edit-save')[0].fire('click');
-  assert.equal(saved(ui)[0].text,'İlk satır\nİkinci satır');
-  editTask(ui,'today','İptal edilecek\nmetin');
-  ui.byClass('edit-cancel')[0].fire('click');
-  assert.equal(saved(ui)[0].text,'İlk satır\nİkinci satır');
-});
 
 test('Üç nokta tamamlamaz; yerinde düzenleme kimlik, tarih ve tamamlanmayı korur',()=>{
   const ui=boot(stored([task('today','2026-11-12',true),task('other','2026-11-13')]));

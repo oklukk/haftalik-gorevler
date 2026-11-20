@@ -60,10 +60,6 @@ function button(className, text, label) {
   if (label) node.setAttribute('aria-label', label);
   return node;
 }
-function resizeTaskTextArea(field) {
-  field.style.height = 'auto';
-  field.style.height = `${Math.max(42, Math.min(field.scrollHeight || 42, 154))}px`;
-}
 function disclosure(control, open) {
   control.setAttribute('aria-expanded', String(open));
   const arrow = element('span', 'chevron');
@@ -133,17 +129,16 @@ function beginEdit(id, row, carry) {
   const task = tasks.find(value => value.id === id);
   if (!task) return;
   const form = element('form', 'task-edit');
-  const input = element('textarea');
-  input.rows = 1; input.value = task.text;
+  const input = element('input');
+  input.type = 'text'; input.value = task.text;
   input.setAttribute('aria-label', 'Görev metni');
-  input.setAttribute('enterkeyhint', 'enter');
+  input.setAttribute('enterkeyhint', 'done');
   const actions = element('div', 'edit-actions');
   const cancel = button('edit-cancel', 'İptal');
   const save = button('edit-save', 'Kaydet');
   const error = element('p', 'edit-error'); error.setAttribute('role', 'status');
   actions.append(cancel, save); form.append(input, actions, error);
   row.replaceChildren(form);
-  resizeTaskTextArea(input);
   const finish = (discard = false) => {
     if (!discard) {
       const text = input.value.trim();
@@ -162,12 +157,10 @@ function beginEdit(id, row, carry) {
   editor = { input, finish, dayKey: task.date, taskId: id, kind: 'edit' };
   cancel.addEventListener('click', () => finish(true));
   save.addEventListener('click', () => finishEditor());
-  // Enter inserts a line break; save and cancel use the existing buttons.
-  form.addEventListener('submit', event => event.preventDefault());
+  form.addEventListener('submit', event => { event.preventDefault(); if (!event.isComposing) finishEditor(); });
   input.addEventListener('compositionstart', () => { input.composing = true; });
   input.addEventListener('compositionend', () => { input.composing = false; });
-  input.addEventListener('input', () => resizeTaskTextArea(input));
-  input.addEventListener('keydown', event => { if (event.key === 'Escape' && !event.isComposing && !input.composing) { event.preventDefault(); finish(true); } });
+  input.addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); finish(true); } });
   input.focus();
 }
 function releaseTaskMenu(restoreFocus = true) {
@@ -272,20 +265,15 @@ function listFor(date) {
     const mark = element('span', 'task-mark');
     mark.setAttribute('aria-hidden', 'true');
     mark.append(icon('circle', document));
-    const input = element('textarea');
-    input.rows = 1;
+    const input = element('input');
+    input.type = 'text';
     input.placeholder = 'Yeni görev';
     input.setAttribute('aria-label', `${fullDate(date)} için yeni görev`);
-    input.setAttribute('enterkeyhint', 'enter');
+    input.setAttribute('enterkeyhint', 'done');
     input.autocomplete = 'off';
-    const actions = element('div', 'edit-actions add-actions');
-    const cancel = button('add-cancel', 'İptal');
-    const save = button('add-save edit-save', 'Kaydet');
-    actions.append(cancel, save);
-    form.append(mark, input, actions);
+    form.append(mark, input);
     add.hidden = true;
     container.append(form);
-    resizeTaskTextArea(input);
     let finished = false;
     const finish = (cancel = false) => {
       if (finished) return true;
@@ -299,21 +287,20 @@ function listFor(date) {
       return true;
     };
     editor = { input, finish, dayKey, kind: 'add' };
-    const close = discard => { if (finish(discard)) add.focus({ preventScroll: true }); };
-    cancel.addEventListener('click', () => close(true));
-    save.addEventListener('click', () => close(false));
-    // A textarea's Enter inserts a newline instead of submitting a task.
-    form.addEventListener('submit', event => event.preventDefault());
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      if (event.isComposing || input.composing) return;
+      if (finish()) add.focus({ preventScroll: true });
+    });
     input.addEventListener('compositionstart', () => { input.composing = true; });
     input.addEventListener('compositionend', () => { input.composing = false; });
-    input.addEventListener('input', () => resizeTaskTextArea(input));
     input.addEventListener('keydown', event => {
-      if (event.key === 'Escape' && !event.isComposing && !input.composing) {
-        event.preventDefault(); close(true);
+      if (event.key === 'Escape') {
+        finish(true);
+        add.focus({ preventScroll: true });
       }
     });
-    // Keep the draft open on blur so Cancel never accidentally saves it.
-    // Navigating away through application controls still calls finishEditor().
+    input.addEventListener('blur', () => { if (!holdEditor && !settings?.isOpen()) finish(); });
     input.focus();
   });
   container.append(list, add);

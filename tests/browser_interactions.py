@@ -117,11 +117,9 @@ def interactions(browser,url):
     page.keyboard.press('Tab')
     assert page.evaluate('document.activeElement.matches(":focus-visible") && getComputedStyle(document.activeElement).outlineStyle !== "none"')
     page.locator('.today .add').tap()
-    value=page.locator('.editor textarea').evaluate('(n)=>({outline:getComputedStyle(n).outlineStyle,shadow:getComputedStyle(n).boxShadow,font:getComputedStyle(n).fontSize})')
+    value=page.locator('.editor input').evaluate('(n)=>({outline:getComputedStyle(n).outlineStyle,shadow:getComputedStyle(n).boxShadow,font:getComputedStyle(n).fontSize})')
     assert value=={'outline':'none','shadow':'none','font':'16px'},value
-    page.locator('.editor textarea').fill('Yeni taslak');page.locator('.editor textarea').press('Enter')
-    assert page.locator('.editor textarea').input_value()=='Yeni taslak\n'
-    page.locator('.add-save').tap()
+    page.locator('.editor input').fill('Yeni taslak');page.locator('.editor input').press('Enter')
     assert page.locator('.today .add').evaluate('(n)=>getComputedStyle(n).outlineStyle')=='none'
     # Moving preview: source follows the pointer; peers fill space, not a line.
     align();source=point(control('E'));target=point(control('A'));target['y']-=12
