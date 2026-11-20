@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createBackup, parseBackup, previewMerge, MAX_BACKUP_BYTES } from '../backup.js';
 
 const records = [
-  { id: 'past', date: '2026-10-30', text: 'Geçmiş', completed: false },
+  { id: 'past', date: '2026-10-30', text: 'Geçmiş\nSüt\nEkmek', completed: false },
   { id: 'today', date: '2026-11-12', text: '<img src=x onerror=alert(1)>', completed: true },
   { id: 'future', date: '2027-01-01', text: 'Gelecek', completed: false }
 ];

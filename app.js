@@ -124,22 +124,67 @@ function preserveTaskDraft() {
   holdEditor = true;
   setTimeout(() => { if (!taskDialog?.open && !settings?.isOpen()) holdEditor = false; }, 0);
 }
+// Focus may move to either action without leaving the editor. In Safari a
+// pointer-pressed button may not receive focus, so also track that gesture.
+function bindTaskForm(form, input, cancel, save, finish, restoreFocus) {
+  let insidePointer = false;
+  let pendingComposition = false;
+  const resize = () => {
+    input.style.height = 'auto';
+    input.style.height = `${input.scrollHeight}px`;
+  };
+  const leave = () => {
+    if (editor?.input !== input || form.contains(document.activeElement) || holdEditor || settings?.isOpen()) return;
+    if (input.composing) { pendingComposition = true; return; }
+    if (!finish()) input.focus({ preventScroll: true });
+  };
+  form.addEventListener('pointerdown', () => {
+    insidePointer = true;
+    setTimeout(() => { insidePointer = false; }, 0);
+  });
+  form.addEventListener('focusout', event => {
+    if (!insidePointer && !holdEditor && !settings?.isOpen() && !form.contains(event.relatedTarget)) setTimeout(leave, 0);
+  });
+  form.addEventListener('submit', event => event.preventDefault());
+  form.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !event.isComposing && !input.composing) {
+      event.preventDefault(); finish(true); restoreFocus();
+    }
+  });
+  cancel.addEventListener('click', () => { finish(true); restoreFocus(); });
+  save.addEventListener('click', () => { if (finishEditor()) restoreFocus(); });
+  input.addEventListener('input', resize);
+  input.addEventListener('compositionstart', () => { input.composing = true; });
+  input.addEventListener('compositionend', () => {
+    input.composing = false;
+    if (pendingComposition) { pendingComposition = false; setTimeout(leave, 0); }
+  });
+  editor.resize = resize;
+  resize();
+  input.focus();
+}
 function beginEdit(id, row, carry) {
   taskDrag?.cancel();
   const task = tasks.find(value => value.id === id);
   if (!task) return;
   const form = element('form', 'task-edit');
-  const input = element('input');
-  input.type = 'text'; input.value = task.text;
+  const input = element('textarea');
+  input.rows = 1; input.value = task.text;
   input.setAttribute('aria-label', 'Görev metni');
-  input.setAttribute('enterkeyhint', 'done');
+  input.setAttribute('enterkeyhint', 'enter');
   const actions = element('div', 'edit-actions');
   const cancel = button('edit-cancel', 'İptal');
   const save = button('edit-save', 'Kaydet');
   const error = element('p', 'edit-error'); error.setAttribute('role', 'status');
   actions.append(cancel, save); form.append(input, actions, error);
   row.replaceChildren(form);
+  let finished = false;
+  const restoreFocus = () => {
+    const source = carry ? carryHost : dayLists.get(task.date);
+    source?.querySelector(`[data-task-id="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
+  };
   const finish = (discard = false) => {
+    if (finished) return true;
     if (!discard) {
       const text = input.value.trim();
       if (!text) { error.textContent = 'Görev metni boş olamaz.'; return false; }
@@ -149,19 +194,12 @@ function beginEdit(id, row, carry) {
         error.textContent = 'Kaydedilemedi. Taslağınız burada korunuyor.'; return false;
       }
     }
+    finished = true;
     editor = null; refreshTasks();
-    const source = carry ? carryHost : dayLists.get(task.date);
-    source?.querySelector(`[data-task-id="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
     return true;
   };
   editor = { input, finish, dayKey: task.date, taskId: id, kind: 'edit' };
-  cancel.addEventListener('click', () => finish(true));
-  save.addEventListener('click', () => finishEditor());
-  form.addEventListener('submit', event => { event.preventDefault(); if (!event.isComposing) finishEditor(); });
-  input.addEventListener('compositionstart', () => { input.composing = true; });
-  input.addEventListener('compositionend', () => { input.composing = false; });
-  input.addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); finish(true); } });
-  input.focus();
+  bindTaskForm(form, input, cancel, save, finish, restoreFocus);
 }
 function releaseTaskMenu(restoreFocus = true) {
   if (!menuLocked) return;
@@ -265,13 +303,17 @@ function listFor(date) {
     const mark = element('span', 'task-mark');
     mark.setAttribute('aria-hidden', 'true');
     mark.append(icon('circle', document));
-    const input = element('input');
-    input.type = 'text';
+    const input = element('textarea');
+    input.rows = 1;
     input.placeholder = 'Yeni görev';
     input.setAttribute('aria-label', `${fullDate(date)} için yeni görev`);
-    input.setAttribute('enterkeyhint', 'done');
+    input.setAttribute('enterkeyhint', 'enter');
     input.autocomplete = 'off';
-    form.append(mark, input);
+    const actions = element('div', 'edit-actions');
+    const cancel = button('edit-cancel', 'İptal');
+    const save = button('edit-save', 'Kaydet');
+    actions.append(cancel, save);
+    form.append(mark, input, actions);
     add.hidden = true;
     container.append(form);
     let finished = false;
@@ -287,21 +329,7 @@ function listFor(date) {
       return true;
     };
     editor = { input, finish, dayKey, kind: 'add' };
-    form.addEventListener('submit', event => {
-      event.preventDefault();
-      if (event.isComposing || input.composing) return;
-      if (finish()) add.focus({ preventScroll: true });
-    });
-    input.addEventListener('compositionstart', () => { input.composing = true; });
-    input.addEventListener('compositionend', () => { input.composing = false; });
-    input.addEventListener('keydown', event => {
-      if (event.key === 'Escape') {
-        finish(true);
-        add.focus({ preventScroll: true });
-      }
-    });
-    input.addEventListener('blur', () => { if (!holdEditor && !settings?.isOpen()) finish(); });
-    input.focus();
+    bindTaskForm(form, input, cancel, save, finish, () => add.focus({ preventScroll: true }));
   });
   container.append(list, add);
   return container;
@@ -530,7 +558,7 @@ function refreshDate() {
 window.addEventListener('hashchange', handleLegacyLink);
 window.addEventListener('popstate', handleLegacyLink);
 window.addEventListener('scroll', scheduleVisibility, { passive: true });
-window.addEventListener('resize', measureHeader);
+window.addEventListener('resize', () => { measureHeader(); editor?.resize(); });
 window.visualViewport?.addEventListener('resize', scheduleVisibility);
 window.visualViewport?.addEventListener('scroll', scheduleVisibility);
 if ('ResizeObserver' in window) new ResizeObserver(measureHeader).observe(app);
