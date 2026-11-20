@@ -60,7 +60,7 @@ function boot(values=new Map(), hash='') {
   vm.runInNewContext(source,sandbox);
   const all=(predicate,node=document.body)=>[...(predicate(node)?[node]:[]),...node.children.flatMap(child=>all(predicate,child))];
   const byClass=name=>all(node=>node.className?.split(' ').includes(name));
-  const add=(button,text)=>{button.fire('click'); const input=byClass('editor')[0].children[1]; assert.equal(document.activeElement,input); input.value=text; input.parent.fire('submit');};
+  const add=(button,text)=>{button.fire('click'); const input=byClass('editor')[0].children[1]; assert.equal(document.activeElement,input); input.value=text; byClass('add-save')[0].fire('click');};
   const flush=()=>{while(frames.length)frames.shift()();};
   flush();
   return {app,notice,location,history,values,byClass,add,document,listeners,flush,setNow(value){now=new Date(value);listeners.tick();flush();}};
@@ -263,7 +263,7 @@ test('Başarısız tamamlama depodaki veriyi ve devreden sayacını değiştirme
   assert.equal(ui.notice.hidden,false);
 });
 
-test('IME, Escape ve odak kaybı mevcut yerinde yazma davranışını korur', () => {
+test('IME, Escape, Enter, blur ve açık butonlar yeni görev taslağını korur', () => {
   const ui=boot();
   ui.byClass('add')[3].fire('click');
   let input=ui.byClass('editor')[0].children[1];
@@ -273,14 +273,21 @@ test('IME, Escape ve odak kaybı mevcut yerinde yazma davranışını korur', ()
   assert.equal(ui.byClass('editor').length,1);
   assert.equal(ui.values.size,0);
   input.fire('compositionend');
+  input.fire('keydown',{key:'Enter'});
+  assert.equal(ui.byClass('editor').length,1);
+  assert.equal(ui.values.size,0);
   input.fire('keydown',{key:'Escape'});
   assert.equal(ui.byClass('editor').length,0);
   assert.equal(ui.values.size,0);
   ui.byClass('add')[3].fire('click');
-  input=ui.byClass('editor')[0].children[1];input.value='Odak kaybında kaydet';
+  input=ui.byClass('editor')[0].children[1];input.value='İptal edilecek';
   input.fire('blur');
-  assert.equal(saved(ui).length,1);
-  assert.equal(saved(ui)[0].text,'Odak kaybında kaydet');
+  assert.equal(ui.byClass('editor').length,1);
+  ui.byClass('add-cancel')[0].fire('click');
+  assert.equal(ui.values.size,0);
+  ui.add(ui.byClass('add')[3],'İlk satır\nİkinci satır');
+  assert.equal(saved(ui)[0].text,'İlk satır\nİkinci satır');
+  assert.equal(ui.byClass('task-text')[0].textContent,'İlk satır\nİkinci satır');
 });
 
 test('Gün sayaçları asıl tarihe göre anında güncellenir, devredenler bugüne eklenmez', () => {

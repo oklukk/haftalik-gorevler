@@ -101,13 +101,14 @@ def check_order(browser, url):
     for width in [320,375,390,412]:
         page.set_viewport_size({'width':width,'height':844})
         page.locator('.today .add').tap()
-        size=page.locator('.editor').evaluate('(n)=>({h:n.getBoundingClientRect().height,font:getComputedStyle(n.querySelector("input")).fontSize})')
-        assert size=={'h':44,'font':'16px'},size
+        size=page.locator('.editor').evaluate('(n)=>({h:n.getBoundingClientRect().height,field:n.querySelector("textarea").getBoundingClientRect().height,font:getComputedStyle(n.querySelector("textarea")).fontSize})')
+        assert size['h']>=85 and 42<=size['field']<=46 and size['font']=='16px',size
+        assert page.locator('.add-save').evaluate('(n)=>n.getBoundingClientRect().height')>=44
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
         if width==390:page.locator('.today').screenshot(path='/tmp/haftalik-order-add-input.png')
-        page.locator('.editor input').press('Escape')
+        page.locator('.editor textarea').press('Escape')
         task('A').locator('..').locator('.task-more').tap();page.locator('.task-edit-action').tap()
-        edit=page.locator('.task-edit input')
+        edit=page.locator('.task-edit textarea')
         size=edit.evaluate('(n)=>({h:n.getBoundingClientRect().height,font:getComputedStyle(n).fontSize})')
         assert 42<=size['h']<=46 and size['font']=='16px',size
         assert page.locator('.edit-save').evaluate('(n)=>n.getBoundingClientRect().height')>=44

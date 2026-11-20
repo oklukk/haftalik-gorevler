@@ -59,9 +59,12 @@ def check(browser, url):
     expect(page.locator('.completed-toggle, .completed-tasks')).to_have_count(0)
     assert next(t for t in page.evaluate(f'JSON.parse(localStorage.getItem({json.dumps(KEY)}))') if t['id'] == 'done')['completed'] is True
     page.locator('.today .add').click()
-    expect(page.locator('.editor input')).to_be_focused()
-    page.locator('.editor input').fill('Uzun Türkçe görev ' + 'ğ' * 160)
-    page.locator('.editor input').press('Enter')
+    expect(page.locator('.editor textarea')).to_be_focused()
+    page.locator('.editor textarea').fill('Uzun Türkçe görev ' + 'ğ' * 160)
+    page.locator('.editor textarea').press('Enter')
+    assert page.locator('.editor textarea').input_value().endswith('\n')
+    expect(page.locator('.editor')).to_be_visible()
+    page.locator('.add-save').click()
     expect(page.locator('.carry-tasks [data-task-id="old"]')).to_have_count(1)
     page.locator('.day-title').nth(4).click()
     expect(page.locator('.day-title').nth(4)).to_have_attribute('aria-expanded', 'false')
@@ -86,14 +89,14 @@ def check(browser, url):
     expect(page.locator('.carryover')).to_have_count(0)
     assert all(v == 'true' for v in page.locator('.day-title').evaluate_all('(nodes) => nodes.map(n => n.getAttribute("aria-expanded"))'))
     page.locator('.add').first.click()
-    page.locator('.editor input').fill('Önceki haftaya ekle')
-    page.locator('.editor input').press('Enter')
+    page.locator('.editor textarea').fill('Önceki haftaya ekle')
+    page.locator('.add-save').click()
     page.locator('.next-week').click()
     page.locator('.next-week').click()
     expect(page.locator('h1')).to_have_text('Gelecek Hafta')
     page.locator('.add').last.click()
-    page.locator('.editor input').fill('Sonraki haftaya ekle')
-    page.locator('.editor input').press('Enter')
+    page.locator('.editor textarea').fill('Sonraki haftaya ekle')
+    page.locator('.add-save').click()
     page.locator('.today-button').click()
     expect(page.locator('h1')).to_have_text('Bu Hafta')
     records = page.evaluate(f'JSON.parse(localStorage.getItem({json.dumps(KEY)}))')
@@ -122,8 +125,8 @@ def check(browser, url):
     expect(page.locator('.day')).to_have_count(7)
     expect(page.locator('.carry-tasks [data-task-id="done"]')).to_have_count(1)
     page.locator('.today .add').click()
-    page.locator('.editor input').fill('Çevrimdışı görev')
-    page.locator('.editor input').press('Enter')
+    page.locator('.editor textarea').fill('Çevrimdışı görev')
+    page.locator('.add-save').click()
     page.reload()
     expect(page.locator('.today .tasks').first).to_contain_text('Çevrimdışı görev')
     assert not errors, errors
@@ -155,7 +158,7 @@ def upgrade_check(browser, url, target, commit=LEGACY_COMMIT, previous="v1"):
     page.evaluate('navigator.serviceWorker.getRegistration().then(r => r.update())')
     page.wait_for_function('navigator.serviceWorker.getRegistration().then(r => !!r.waiting)')
     # Wait for actual activation with all old clients closed before reopening.
-    waiting_worker = next(worker for worker in context.service_workers if worker.evaluate('VERSION') == 'v9')
+    waiting_worker = next(worker for worker in context.service_workers if worker.evaluate('VERSION') == 'v11')
     page.close()
     waiting_worker.evaluate('() => new Promise(resolve => { const poll = () => { if (self.registration.active?.state === "activated" && !self.registration.waiting) resolve(); else setTimeout(poll, 20); }; poll(); })')
     page = context.new_page()
@@ -165,18 +168,18 @@ def upgrade_check(browser, url, target, commit=LEGACY_COMMIT, previous="v1"):
     page.set_default_navigation_timeout(20000)
     page.goto(url)
     page.wait_for_function('navigator.serviceWorker.getRegistration().then(r => !r.waiting && r.active?.state === "activated" && r.active === navigator.serviceWorker.controller)')
-    page.wait_for_function('caches.keys().then(keys => keys.some(k => k.endsWith(":v9")) && !keys.some(k => k.endsWith(":v7")) && !keys.some(k => k.endsWith(":v6")) && !keys.some(k => k.endsWith(":v5")) && !keys.some(k => k.endsWith(":v4")) && !keys.some(k => k.endsWith(":v1")) && !keys.some(k => k.endsWith(":v2")) && !keys.some(k => k.endsWith(":v3")))')
+    page.wait_for_function('caches.keys().then(keys => keys.some(k => k.endsWith(":v11")) && !keys.some(k => k.endsWith(":v7")) && !keys.some(k => k.endsWith(":v6")) && !keys.some(k => k.endsWith(":v5")) && !keys.some(k => k.endsWith(":v4")) && !keys.some(k => k.endsWith(":v1")) && !keys.some(k => k.endsWith(":v2")) && !keys.some(k => k.endsWith(":v3")))')
     page.reload()
     expect(page.locator('.week-nav')).to_have_count(1)
     assert page.evaluate(f'JSON.parse(localStorage.getItem({json.dumps(KEY)}))') == SEED
-    page.wait_for_function('caches.keys().then(keys => keys.some(k => k.endsWith(":v9")) && !keys.some(k => k.endsWith(":v7")) && !keys.some(k => k.endsWith(":v6")) && !keys.some(k => k.endsWith(":v5")) && !keys.some(k => k.endsWith(":v4")) && !keys.some(k => k.endsWith(":v1")) && !keys.some(k => k.endsWith(":v2")) && !keys.some(k => k.endsWith(":v3")))')
+    page.wait_for_function('caches.keys().then(keys => keys.some(k => k.endsWith(":v11")) && !keys.some(k => k.endsWith(":v7")) && !keys.some(k => k.endsWith(":v6")) && !keys.some(k => k.endsWith(":v5")) && !keys.some(k => k.endsWith(":v4")) && !keys.some(k => k.endsWith(":v1")) && !keys.some(k => k.endsWith(":v2")) && !keys.some(k => k.endsWith(":v3")))')
     context.set_offline(True)
     page.reload()
     expect(page.locator('.week-nav')).to_have_count(1)
     assert page.evaluate(f'JSON.parse(localStorage.getItem({json.dumps(KEY)}))') == SEED
     assert not upgrade_errors,upgrade_errors
     context.close()
-    print(f'PASS: {previous} → v9 PWA upgrade, old cache removal, unchanged existing records, offline updated shell')
+    print(f'PASS: {previous} → v11 PWA upgrade, old cache removal, unchanged existing records, offline updated shell')
 
 
 def settings_check(browser, url):
@@ -206,7 +209,7 @@ def settings_check(browser, url):
     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
     page.locator('html').evaluate('(n)=>n.style.fontSize=""')
     page.locator('.today .add').click()
-    page.locator('.editor input').fill('Panel açılırken korunan taslak')
+    page.locator('.editor textarea').fill('Panel açılırken korunan taslak')
     page.locator('.settings-button').scroll_into_view_if_needed()
     y=page.evaluate('scrollY')
     page.locator('.settings-button').click()
@@ -214,9 +217,9 @@ def settings_check(browser, url):
     expect(page.locator('.sheet-close')).to_be_focused()
     page.locator('.sheet-close').click()
     assert abs(page.evaluate('scrollY')-y) <= 1
-    expect(page.locator('.editor input')).to_have_value('Panel açılırken korunan taslak')
+    expect(page.locator('.editor textarea')).to_have_value('Panel açılırken korunan taslak')
     page.locator('.settings-button').click()
-    expect(page.locator('.app-version')).to_have_text('Sürüm 1.4.2')
+    expect(page.locator('.app-version')).to_have_text('Sürüm 1.4.4')
     # Downloads contain all stored records, and export/import make no network requests.
     requests=[]
     page.on('request',lambda request: requests.append(request.url))
@@ -229,8 +232,8 @@ def settings_check(browser, url):
     expect(page.locator('.settings-sheet > .settings-status')).to_contain_text('kaydedildiğini kontrol')
     # Cancel the draft deliberately before restore so it is not merged implicitly.
     page.locator('.sheet-close').click()
-    page.locator('.editor input').focus()
-    page.locator('.editor input').press('Escape')
+    page.locator('.editor textarea').focus()
+    page.locator('.editor textarea').press('Escape')
     page.locator('.settings-button').click()
     def upload(data):
         page.locator('.backup-file').set_input_files({'name':'yedek.json','mimeType':'application/json','buffer':json.dumps(data).encode()})
@@ -282,8 +285,8 @@ def live_update_check(browser,url,target):
     page.evaluate(f'localStorage.setItem({json.dumps(KEY)}, {json.dumps(json.dumps(SEED))})')
     page.reload();page.evaluate('navigator.serviceWorker.ready')
     page.wait_for_function('navigator.serviceWorker.controller !== null')
-    (target/'sw.js').write_text((ROOT/'sw.js').read_text().replace("const VERSION = 'v9'","const VERSION = 'v10'"))
-    (target/'version.js').write_text((ROOT/'version.js').read_text().replace('1.4.2','1.4.3'))
+    (target/'sw.js').write_text((ROOT/'sw.js').read_text().replace("const VERSION = 'v11'","const VERSION = 'v12'"))
+    (target/'version.js').write_text((ROOT/'version.js').read_text().replace('1.4.4','1.4.5'))
     page.locator('.settings-button').click();page.locator('.check-updates').click()
     expect(page.locator('.activate-update')).to_be_visible()
     expect(page.locator('.settings-sheet > .settings-status')).to_have_text('Güncelleme Hazır')
@@ -307,7 +310,7 @@ def live_update_check(browser,url,target):
     page.screenshot(path='/tmp/haftalik-update-confirmation.png')
     page.locator('.update-confirm-later').click()
     expect(page.locator('.update-banner')).to_be_hidden()
-    page.locator('.today .add').click();page.locator('.editor input').fill('Güncellemeden önce koru')
+    page.locator('.today .add').click();page.locator('.editor textarea').fill('Güncellemeden önce koru')
     page.locator('.settings-button').click();page.locator('.check-updates').click()
     expect(page.locator('.activate-update')).to_be_visible()
     # Failed draft save prevents activation and keeps the input intact.
@@ -315,15 +318,15 @@ def live_update_check(browser,url,target):
     page.locator('.activate-update').click();page.locator('.update-confirm-continue').click()
     expect(page.locator('.settings-sheet > .settings-status')).to_contain_text('Taslak kaydedilemedi')
     assert page.evaluate('updatePosts')==0 and not navigations
-    expect(page.locator('.editor input')).to_have_value('Güncellemeden önce koru')
+    expect(page.locator('.editor textarea')).to_have_value('Güncellemeden önce koru')
     page.evaluate('() => {Storage.prototype.setItem=window.savedSetItem;}')
     other=context.new_page();other.goto(url)
     page.locator('.update-confirm-continue').click()
     expect(page.locator('.settings-sheet > .settings-status')).to_contain_text('Diğer uygulama')
-    expect(page.locator('.app-version')).to_have_text('Sürüm 1.4.2')
+    expect(page.locator('.app-version')).to_have_text('Sürüm 1.4.4')
     other.close()
     page.locator('.update-confirm-continue').click()
-    page.wait_for_function('document.querySelector(".settings-sheet .app-version")?.textContent === "Sürüm 1.4.2"')
+    page.wait_for_function('document.querySelector(".settings-sheet .app-version")?.textContent === "Sürüm 1.4.4"')
     records=page.evaluate(f'JSON.parse(localStorage.getItem({json.dumps(KEY)}))')
     assert len(records)==6 and records[:5]==SEED and records[-1]['text']=='Güncellemeden önce koru'
     context.set_offline(True)
@@ -375,15 +378,15 @@ def task_actions_check(browser,url):
     menu('t2');page.screenshot(path='/tmp/haftalik-soft-v2-task-menu.png');page.keyboard.press('Escape');expect(page.locator('.task-sheet')).not_to_be_visible()
     menu('t2');page.mouse.click(5,5);expect(page.locator('.task-sheet')).not_to_be_visible()
     menu('t2');page.locator('.task-edit-action').click()
-    expect(page.locator('.task-edit input')).to_be_focused()
+    expect(page.locator('.task-edit textarea')).to_be_focused()
     page.screenshot(path='/tmp/haftalik-soft-v2-task-edit.png')
-    assert page.locator('.task-edit input').evaluate('(n)=>parseFloat(getComputedStyle(n).fontSize)')>=16
-    page.locator('.task-edit input').fill('   ');page.locator('.edit-save').click()
+    assert page.locator('.task-edit textarea').evaluate('(n)=>parseFloat(getComputedStyle(n).fontSize)')>=16
+    page.locator('.task-edit textarea').fill('   ');page.locator('.edit-save').click()
     expect(page.locator('.edit-error')).to_contain_text('boş olamaz')
-    page.locator('.task-edit input').fill('İptal taslağı');page.locator('.edit-cancel').click()
+    page.locator('.task-edit textarea').fill('İptal taslağı');page.locator('.edit-cancel').click()
     assert next(t for t in stored() if t['id']=='t2')['text']=='Toplantı notlarını düzenle'
     menu('t2');page.locator('.task-edit-action').click()
-    page.locator('.task-edit input').fill('Düzenlenen görev');page.locator('.edit-save').click()
+    page.locator('.task-edit textarea').fill('Düzenlenen görev');page.locator('.edit-save').click()
     assert next(t for t in stored() if t['id']=='t2')==dict(id='t2',date='2026-11-12',text='Düzenlenen görev',completed=False)
     # Preserve an edited completed task's identity/status during date moves.
     menu('t0');page.locator('.task-date-action').click();page.locator('.task-date-input').fill('2026-11-20');page.locator('.task-date-save').click()
@@ -401,15 +404,15 @@ def task_actions_check(browser,url):
     # All new actions work with the application offline.
     context.set_offline(True)
     menu('week','.carry-tasks');page.locator('.task-edit-action').click()
-    page.locator('.task-edit input').fill('Çevrimdışı düzenlendi');page.locator('.edit-save').click()
+    page.locator('.task-edit textarea').fill('Çevrimdışı düzenlendi');page.locator('.edit-save').click()
     menu('week','.carry-tasks');page.locator('.task-delete-action').click();page.locator('.task-delete-cancel').click()
     assert any(t['id']=='week' for t in stored())
     menu('week','.carry-tasks');page.locator('.task-delete-action').click();page.locator('.task-delete-confirm').click()
     assert not any(t['id']=='week' for t in stored())
     # A quota failure retains both the original record and visible editing draft.
-    menu('t2');page.locator('.task-edit-action').click();page.locator('.task-edit input').fill('Kaydedilemeyen taslak')
+    menu('t2');page.locator('.task-edit-action').click();page.locator('.task-edit textarea').fill('Kaydedilemeyen taslak')
     page.evaluate('() => {window.savedSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(){throw new DOMException("quota","QuotaExceededError")};}')
-    page.locator('.edit-save').click();expect(page.locator('.task-edit input')).to_have_value('Kaydedilemeyen taslak')
+    page.locator('.edit-save').click();expect(page.locator('.task-edit textarea')).to_have_value('Kaydedilemeyen taslak')
     assert next(t for t in stored() if t['id']=='t2')['text']=='Düzenlenen görev'
     page.evaluate('() => {Storage.prototype.setItem=window.savedSetItem;}');page.locator('.edit-cancel').click()
     page.locator('.settings-button').click()
